@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "868174848530",
+    "project_id": "dadcommunity-ae202",
+    "storage_bucket": "dadcommunity-ae202.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:868174848530:android:82aded7092c80dc66ceecb",
+        "android_client_info": {
+          "package_name": "com.dadcommunity"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "868174848530-b890uhuijabs3oaosnb41r4bkotq92os.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD4uTnkqVhNURr148uZUrUqgbcN5kUkK2w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "868174848530-b890uhuijabs3oaosnb41r4bkotq92os.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "868174848530-1c9k3mvr0bfclcvagrkf61dsd15l1c5j.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dadcommunity"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

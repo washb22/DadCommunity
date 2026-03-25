@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,119 +6,60 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
-
-const CATEGORIES = ['전체', '부부관계', '자유', '취미'];
-const TABS = ['최신', '인기', '팔로잉'];
-
-const DUMMY_POSTS = [
-  {
-    id: '1',
-    user: '익명의 아빠',
-    avatar: '🧔',
-    time: '5분 전',
-    category: '부부관계',
-    text: '아내가 요즘 너무 힘들어하는데 어떻게 도와줘야 할지 모르겠어요. 비슷한 경험 있으신 분?',
-    likes: 12,
-    comments: 8,
-    isAnonymous: true,
-  },
-  {
-    id: '2',
-    user: '두아이아빠',
-    avatar: '👨',
-    time: '23분 전',
-    category: '자유',
-    text: '오늘 아이 재롱잔치 다녀왔는데 눈물이 나더라고요 ㅎㅎ 다들 이런 경험 있으시죠?',
-    likes: 34,
-    comments: 15,
-    isAnonymous: false,
-  },
-  {
-    id: '3',
-    user: '캠핑매니아',
-    avatar: '🏕️',
-    time: '1시간 전',
-    category: '취미',
-    text: '이번 주말 아이랑 캠핑 가려는데 추천 캠핑장 있으신가요? 경기도 근처면 좋겠습니다.',
-    likes: 8,
-    comments: 22,
-    isAnonymous: false,
-  },
-  {
-    id: '4',
-    user: '익명의 아빠',
-    avatar: '🧔',
-    time: '2시간 전',
-    category: '부부관계',
-    text: '장인어른이 자꾸 육아에 간섭하시는데... 아내한테 말하기도 애매하고 어떻게 해야 할까요?',
-    likes: 45,
-    comments: 31,
-    isAnonymous: true,
-  },
-  {
-    id: '5',
-    user: '신혼아빠',
-    avatar: '👶',
-    time: '3시간 전',
-    category: '자유',
-    text: '첫째가 태어난 지 한 달 됐는데 밤잠을 못 자니까 회사에서 너무 힘드네요. 다들 어떻게 버티셨어요?',
-    likes: 67,
-    comments: 42,
-    isAnonymous: false,
-  },
-];
-
-function PostCard({post, onPress}: {post: any; onPress: () => void}) {
-  return (
-    <TouchableOpacity style={styles.postCard} onPress={onPress}>
-      <View style={styles.postHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{post.avatar}</Text>
-        </View>
-        <View>
-          <Text style={styles.postUser}>{post.user}</Text>
-          <Text style={styles.postTime}>
-            {post.time} · {post.category}
-          </Text>
-        </View>
-      </View>
-      <Text style={styles.postText} numberOfLines={3}>
-        {post.text}
-      </Text>
-      <View style={styles.postActions}>
-        <Text style={styles.actionText}>❤️ {post.likes}</Text>
-        <Text style={styles.actionText}>💬 {post.comments}</Text>
-        <Text style={styles.actionText}>🔖</Text>
-        <Text style={styles.actionText}>↗️</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
+import {useApp} from '../context/AppContext';
+import Header from '../components/Header';
+import PostCard from '../components/PostCard';
+import EmptyState from '../components/EmptyState';
+import {CATEGORIES, TABS} from '../data/mockData';
 
 export default function HomeFeedScreen({navigation}: any) {
+  const {state, dispatch} = useApp();
   const [activeTab, setActiveTab] = useState('최신');
   const [activeCategory, setActiveCategory] = useState('전체');
+  const [refreshing, setRefreshing] = useState(false);
 
-  const filteredPosts =
-    activeCategory === '전체'
-      ? DUMMY_POSTS
-      : DUMMY_POSTS.filter(p => p.category === activeCategory);
+  const [displayCount, setDisplayCount] = useState(10);
+
+  const filteredPosts = state.posts.filter(p => {
+    // Filter out blocked users
+    if (state.blockedUsers.includes(p.user)) return false;
+    if (activeCategory !== '전체' && p.category !== activeCategory) return false;
+    return true;
+  });
+
+  const sortedPosts =
+    activeTab === '인기'
+      ? [...filteredPosts].sort((a, b) => b.likes - a.likes)
+      : filteredPosts;
+
+  const displayedPosts = sortedPosts.slice(0, displayCount);
+  const hasMore = displayCount < sortedPosts.length;
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setDisplayCount(10);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
+
+  const loadMore = useCallback(() => {
+    if (hasMore) {
+      setDisplayCount(prev => prev + 10);
+    }
+  }, [hasMore]);
+
+  const unreadNotifs = state.notifications.filter(n => !n.read).length;
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>아빠의 다락방</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity>
-            <Text style={styles.headerIcon}>🔔</Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.headerIcon}>🔍</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Header
+        title="아빠의 다락방"
+        rightIcon2={unreadNotifs > 0 ? '🔔' : '🔔'}
+        onRightPress2={() => navigation.navigate('Notifications')}
+        rightIcon="🔍"
+        onRightPress={() => navigation.navigate('Search')}
+      />
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -140,44 +81,70 @@ export default function HomeFeedScreen({navigation}: any) {
 
       {/* Categories */}
       <View style={styles.categoryBar}>
-        {CATEGORIES.map(cat => (
-          <TouchableOpacity
-            key={cat}
-            style={[
-              styles.catChip,
-              activeCategory === cat && styles.catChipActive,
-            ]}
-            onPress={() => setActiveCategory(cat)}>
-            <Text
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={CATEGORIES}
+          keyExtractor={item => item}
+          renderItem={({item: cat}) => (
+            <TouchableOpacity
               style={[
-                styles.catText,
-                activeCategory === cat && styles.catTextActive,
-              ]}>
-              {cat}
-            </Text>
-          </TouchableOpacity>
-        ))}
+                styles.catChip,
+                activeCategory === cat && styles.catChipActive,
+              ]}
+              onPress={() => setActiveCategory(cat)}>
+              <Text
+                style={[
+                  styles.catText,
+                  activeCategory === cat && styles.catTextActive,
+                ]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.catList}
+        />
       </View>
 
       {/* Feed */}
-      <FlatList
-        data={filteredPosts}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => (
-          <PostCard
-            post={item}
-            onPress={() => navigation.navigate('PostDetail', {post: item})}
-          />
-        )}
-        contentContainerStyle={styles.feedContent}
-        showsVerticalScrollIndicator={false}
-      />
+      {sortedPosts.length === 0 ? (
+        <EmptyState
+          icon="📭"
+          title="게시글이 없습니다"
+          subtitle="첫 번째 글을 작성해보세요!"
+        />
+      ) : (
+        <FlatList
+          data={displayedPosts}
+          keyExtractor={item => item.id}
+          renderItem={({item}) => (
+            <PostCard
+              post={item}
+              onPress={() => navigation.navigate('PostDetail', {postId: item.id})}
+              onLike={() => dispatch({type: 'TOGGLE_LIKE', postId: item.id})}
+              onSave={() => dispatch({type: 'TOGGLE_SAVE', postId: item.id})}
+            />
+          )}
+          contentContainerStyle={styles.feedContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#2D5BFF']}
+            />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+        />
+      )}
 
       {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('WritePost')}>
-        <Text style={styles.fabText}>✏️</Text>
+        onPress={() => navigation.navigate('WritePost')}
+        activeOpacity={0.85}>
+        <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -186,39 +153,19 @@ export default function HomeFeedScreen({navigation}: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    height: 56,
-    backgroundColor: '#2D5BFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerIcons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  headerIcon: {
-    fontSize: 20,
+    backgroundColor: '#F5F6F8',
   },
   tabs: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#F0F0F0',
   },
   tab: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 2,
+    borderBottomWidth: 2.5,
     borderBottomColor: 'transparent',
   },
   tabActive: {
@@ -227,108 +174,63 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#999',
+    color: '#BBB',
   },
   tabTextActive: {
     color: '#2D5BFF',
+    fontWeight: '700',
   },
   categoryBar: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
-    paddingHorizontal: 12,
     paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  catList: {
+    paddingHorizontal: 12,
     gap: 8,
   },
   catChip: {
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#F0F2F5',
+    marginRight: 0,
   },
   catChipActive: {
     backgroundColor: '#2D5BFF',
   },
   catText: {
     fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
+    color: '#777',
+    fontWeight: '600',
   },
   catTextActive: {
     color: '#fff',
   },
   feedContent: {
-    paddingVertical: 8,
-  },
-  postCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: {width: 0, height: 2},
-    elevation: 1,
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 10,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-  },
-  postUser: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#333',
-  },
-  postTime: {
-    fontSize: 11,
-    color: '#aaa',
-    marginTop: 1,
-  },
-  postText: {
-    fontSize: 14,
-    color: '#444',
-    lineHeight: 21,
-    marginBottom: 12,
-  },
-  postActions: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  actionText: {
-    fontSize: 13,
-    color: '#999',
+    paddingVertical: 10,
   },
   fab: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 24,
     right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#2D5BFF',
     alignItems: 'center',
     justifyContent: 'center',
+    elevation: 6,
     shadowColor: '#2D5BFF',
     shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOffset: {width: 0, height: 4},
-    elevation: 5,
   },
   fabText: {
-    fontSize: 24,
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: '300',
+    marginTop: -2,
   },
 });

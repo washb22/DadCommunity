@@ -8,74 +8,123 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
+import {useApp} from '../context/AppContext';
+import Header from '../components/Header';
 
-const MENU_ITEMS = [
-  {icon: '📝', label: '내가 쓴 글'},
-  {icon: '💬', label: '내가 쓴 댓글'},
-  {icon: '🔖', label: '저장한 글'},
-  {icon: '🚫', label: '차단 관리'},
-  {icon: '🔔', label: '알림 설정'},
-  {icon: '📞', label: '문의하기'},
-  {icon: '📄', label: '이용약관'},
-  {icon: '🔒', label: '개인정보처리방침'},
+const MENU_SECTIONS = [
+  {
+    title: '나의 활동',
+    items: [
+      {icon: '📝', label: '내가 쓴 글', screen: 'MyPosts'},
+      {icon: '💬', label: '내가 쓴 댓글', screen: 'MyComments'},
+      {icon: '★', label: '저장한 글', screen: 'SavedPosts'},
+    ],
+  },
+  {
+    title: '설정',
+    items: [
+      {icon: '🔔', label: '알림 설정', screen: null},
+      {icon: '🚫', label: '차단 관리', screen: 'BlockList'},
+    ],
+  },
+  {
+    title: '정보',
+    items: [
+      {icon: '📞', label: '문의하기', screen: null},
+      {icon: '📄', label: '이용약관', screen: null},
+      {icon: '🔒', label: '개인정보처리방침', screen: null},
+    ],
+  },
 ];
 
-export default function ProfileScreen() {
+export default function ProfileScreen({navigation}: any) {
+  const {state, dispatch} = useApp();
+  const {user} = state;
+
+  const handleLogout = () => {
+    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
+      {text: '취소', style: 'cancel'},
+      {
+        text: '로그아웃',
+        style: 'destructive',
+        onPress: () => {
+          dispatch({type: 'LOGOUT'});
+          navigation.reset({index: 0, routes: [{name: 'Login'}]});
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>마이페이지</Text>
-        <TouchableOpacity>
-          <Text style={styles.headerIcon}>⚙️</Text>
-        </TouchableOpacity>
-      </View>
+      <Header
+        title="마이페이지"
+        rightIcon="⚙️"
+        onRightPress={() => {}}
+      />
 
-      <ScrollView>
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>🧔</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileTop}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{user.avatar}</Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.userName}>{user.nickname}</Text>
+              <Text style={styles.userBio}>{user.bio}</Text>
+            </View>
           </View>
-          <Text style={styles.userName}>두아이아빠</Text>
-          <Text style={styles.userBio}>5살, 3살 아빠 | 캠핑 좋아합니다</Text>
 
-          <TouchableOpacity style={styles.editBtn}>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => navigation.navigate('EditProfile')}
+            activeOpacity={0.7}>
             <Text style={styles.editBtnText}>프로필 수정</Text>
           </TouchableOpacity>
 
           <View style={styles.stats}>
             <View style={styles.stat}>
-              <Text style={styles.statNum}>23</Text>
+              <Text style={styles.statNum}>{user.postCount}</Text>
               <Text style={styles.statLabel}>게시글</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statNum}>156</Text>
+              <Text style={styles.statNum}>{user.likeCount}</Text>
               <Text style={styles.statLabel}>받은 좋아요</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.stat}>
-              <Text style={styles.statNum}>12</Text>
+              <Text style={styles.statNum}>{user.saveCount}</Text>
               <Text style={styles.statLabel}>저장</Text>
             </View>
           </View>
         </View>
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {MENU_ITEMS.map((item, index) => (
-            <TouchableOpacity key={index} style={styles.menuItem}>
-              <Text style={styles.menuIcon}>{item.icon}</Text>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Text style={styles.menuArrow}>›</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Menu Sections */}
+        {MENU_SECTIONS.map((section, sIdx) => (
+          <View key={sIdx} style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            {section.items.map((item, iIdx) => (
+              <TouchableOpacity
+                key={iIdx}
+                style={styles.menuItem}
+                onPress={() => {
+                  if (item.screen) {
+                    navigation.navigate(item.screen);
+                  }
+                }}
+                activeOpacity={0.6}>
+                <Text style={styles.menuIcon}>{item.icon}</Text>
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                <Text style={styles.menuArrow}>{'>'}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
 
         {/* Logout */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={() => Alert.alert('로그아웃', '로그아웃 하시겠습니까?')}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={styles.logoutText}>로그아웃</Text>
         </TouchableOpacity>
 
@@ -88,47 +137,43 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F6F8',
   },
-  header: {
-    height: 56,
-    backgroundColor: '#2D5BFF',
+  profileCard: {
+    backgroundColor: '#fff',
+    margin: 12,
+    borderRadius: 16,
+    padding: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+  },
+  profileTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerIcon: {
-    fontSize: 20,
-  },
-  profileSection: {
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#f0f0f0',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F0F2F5',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginRight: 16,
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 30,
+  },
+  profileInfo: {
+    flex: 1,
   },
   userName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#222',
   },
   userBio: {
     fontSize: 13,
@@ -136,57 +181,69 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   editBtn: {
-    marginTop: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F0F2F5',
+    marginBottom: 16,
   },
   editBtnText: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 14,
+    color: '#555',
     fontWeight: '600',
   },
   stats: {
     flexDirection: 'row',
-    marginTop: 20,
-    gap: 0,
+    justifyContent: 'center',
   },
   stat: {
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
   },
   statNum: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#333',
+    color: '#2D5BFF',
   },
   statLabel: {
     fontSize: 12,
     color: '#999',
-    marginTop: 2,
+    marginTop: 4,
   },
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: '#eee',
+    backgroundColor: '#F0F0F0',
     alignSelf: 'center',
   },
   menuSection: {
     backgroundColor: '#fff',
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#AAA',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+    letterSpacing: 0.5,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
-    gap: 14,
+    borderBottomColor: '#F8F8F8',
   },
   menuIcon: {
-    fontSize: 20,
+    fontSize: 18,
+    marginRight: 14,
   },
   menuLabel: {
     flex: 1,
@@ -194,14 +251,17 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   menuArrow: {
-    fontSize: 20,
+    fontSize: 16,
     color: '#ccc',
+    fontWeight: '300',
   },
   logoutBtn: {
-    marginTop: 8,
+    marginHorizontal: 12,
+    marginTop: 4,
     backgroundColor: '#fff',
     paddingVertical: 16,
     alignItems: 'center',
+    borderRadius: 14,
   },
   logoutText: {
     fontSize: 15,
