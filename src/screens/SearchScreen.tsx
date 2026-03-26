@@ -8,6 +8,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import PostCard from '../components/PostCard';
 import EmptyState from '../components/EmptyState';
@@ -29,8 +30,18 @@ export default function SearchScreen({navigation}: any) {
     : [];
 
   const handleSearch = () => {
-    if (query.trim()) {
+    const q = query.trim();
+    if (q) {
       setSearched(true);
+      // 검색 로그 저장 (어드민 통계용)
+      firestore()
+        .collection('searchLogs')
+        .doc(q)
+        .set(
+          {keyword: q, count: firestore.FieldValue.increment(1), lastSearched: firestore.FieldValue.serverTimestamp()},
+          {merge: true},
+        )
+        .catch(() => {});
     }
   };
 

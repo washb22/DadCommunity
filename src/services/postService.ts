@@ -1,4 +1,4 @@
-import firestore from '@react-native-firebase/firestore';
+import firestore, {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
 import {Post, Comment, Reply} from '../data/mockData';
 
 const postsRef = firestore().collection('posts');
@@ -26,8 +26,9 @@ export async function fetchPosts(
       const comments = data.commentCount || 0;
       const ts = data.timestamp?.toDate
         ? data.timestamp.toDate().getTime()
-        : Date.now();
-      const hoursAgo = (now - ts) / (1000 * 60 * 60);
+        : 0;
+      if (!ts) return {id: doc.id, ...data, _score: 0, _doc: doc};
+      const hoursAgo = Math.max(0, (now - ts) / (1000 * 60 * 60));
       const score = (likes + comments * 2) / Math.pow(hoursAgo + 2, 1.5);
       return {id: doc.id, ...data, _score: score, _doc: doc};
     });
@@ -234,4 +235,3 @@ export async function addReply(
   });
 }
 
-import {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';

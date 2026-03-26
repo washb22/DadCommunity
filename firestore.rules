@@ -2,9 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Admin helper - 관리자 UID를 여기에 추가하세요
+    // Admin UID
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      return request.auth != null && request.auth.uid == 'CN3XtKtruMbm1856OpSd01UM8AG3';
     }
 
     // Users
@@ -20,7 +20,6 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null && (
         resource.data.userId == request.auth.uid ||
-        // Allow like/save toggle by any authenticated user
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy', 'savedBy', 'commentCount'])
       );
       allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
@@ -30,14 +29,14 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
         allow update: if request.auth != null && resource.data.userId == request.auth.uid;
-        allow delete: if request.auth != null;
+        allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
 
         // Replies subcollection
         match /replies/{replyId} {
           allow read: if request.auth != null;
           allow create: if request.auth != null;
           allow update: if request.auth != null && resource.data.userId == request.auth.uid;
-          allow delete: if request.auth != null;
+          allow delete: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
         }
       }
     }
@@ -54,10 +53,10 @@ service cloud.firestore {
       }
     }
 
-    // Reports
+    // Reports - 생성은 모든 유저, 읽기/처리는 관리자만
     match /reports/{reportId} {
       allow create: if request.auth != null;
-      allow read, update: if request.auth != null; // Admin page에서 읽기/처리용
+      allow read, update: if isAdmin();
     }
 
     // Blocks
@@ -67,30 +66,30 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.blocker == request.auth.uid;
     }
 
-    // Push Requests & Logs
+    // Push Requests & Logs - 관리자만
     match /pushRequests/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
     match /pushLogs/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
     // App Config (banner, popup, categories, appVersion)
     match /appConfig/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // Search Logs (for keyword analytics)
     match /searchLogs/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAdmin();
+      allow create, update: if request.auth != null;
     }
 
     // Activity Logs (for DAU/MAU)
     match /activityLogs/{docId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isAdmin();
+      allow create, update: if request.auth != null;
     }
 
     // Notifications

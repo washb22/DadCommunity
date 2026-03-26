@@ -578,8 +578,9 @@ function closeModal() { document.getElementById('modalOverlay').classList.remove
 document.getElementById('modalOverlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
 
 // ==================== HELPERS ====================
-function formatDate(ts) { if (!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}); }
-function formatDateShort(ts) { if (!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('ko-KR'); }
+function esc(s) { if (!s && s !== 0) return ''; const div = document.createElement('div'); div.textContent = String(s); return div.innerHTML; }
+function formatDate(ts) { if (!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); if (isNaN(d.getTime())) return '-'; return d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}); }
+function formatDateShort(ts) { if (!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); if (isNaN(d.getTime())) return '-'; return d.toLocaleDateString('ko-KR'); }
 function getDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); d.setHours(0,0,0,0); return d; }
 function dateLabel(d) { return (d.getMonth()+1) + '/' + d.getDate(); }
 
@@ -631,12 +632,12 @@ async function loadDashboard() {
     // Recent posts
     document.getElementById('recentPostsTable').innerHTML = postsSnap.docs.length === 0
       ? '<tr><td colspan="5" class="empty">게시글이 없습니다</td></tr>'
-      : postsSnap.docs.map(doc => { const d = doc.data(); return `<tr><td class="truncate">${d.title||'(제목 없음)'}</td><td>${d.isAnonymous?'익명':(d.user||'-')}</td><td><span class="badge-category">${d.category||'-'}</span></td><td>${d.likes||0}</td><td>${d.commentCount||0}</td></tr>`; }).join('');
+      : postsSnap.docs.map(doc => { const d = doc.data(); return `<tr><td class="truncate">${esc(d.title)||'(제목 없음)'}</td><td>${d.isAnonymous?'익명':esc(d.user)||'-'}</td><td><span class="badge-category">${esc(d.category)||'-'}</span></td><td>${d.likes||0}</td><td>${d.commentCount||0}</td></tr>`; }).join('');
 
     // Recent reports
     document.getElementById('recentReportsTable').innerHTML = reportsSnap.docs.length === 0
       ? '<tr><td colspan="4" class="empty">신고가 없습니다</td></tr>'
-      : reportsSnap.docs.map(doc => { const d = doc.data(); return `<tr><td>${d.targetType||'-'}</td><td>${d.reason||'-'}</td><td><span class="badge-status ${d.status==='pending'?'badge-pending':'badge-resolved'}">${d.status==='pending'?'미처리':'처리완료'}</span></td><td>${formatDate(d.createdAt)}</td></tr>`; }).join('');
+      : reportsSnap.docs.map(doc => { const d = doc.data(); return `<tr><td>${esc(d.targetType)||'-'}</td><td>${esc(d.reason)||'-'}</td><td><span class="badge-status ${d.status==='pending'?'badge-pending':'badge-resolved'}">${d.status==='pending'?'미처리':'처리완료'}</span></td><td>${formatDate(d.createdAt)}</td></tr>`; }).join('');
   } catch (e) { console.error('Dashboard error:', e); }
 }
 
@@ -732,26 +733,28 @@ async function loadUsers() {
 function renderUsers(users) {
   if (!users.length) { document.getElementById('usersTable').innerHTML = '<tr><td colspan="6" class="empty">사용자가 없습니다</td></tr>'; return; }
   document.getElementById('usersTable').innerHTML = users.map(u => `<tr>
-    <td>${u.avatar||''} ${u.nickname||'(없음)'}</td><td>${u.email||'-'}</td><td>${formatDateShort(u.createdAt)}</td><td>${u.postCount||0}</td>
+    <td>${esc(u.avatar)||''} ${esc(u.nickname)||'(없음)'}</td><td>${esc(u.email)||'-'}</td><td>${formatDateShort(u.createdAt)}</td><td>${u.postCount||0}</td>
     <td><span class="badge-status ${u.banned?'badge-banned':'badge-active'}">${u.banned?'정지':'활성'}</span></td>
-    <td class="actions"><button class="btn btn-sm btn-primary" onclick="viewUser('${u.id}')">상세</button>
-    ${u.banned?`<button class="btn btn-sm btn-success" onclick="toggleBan('${u.id}',false)">해제</button>`:`<button class="btn btn-sm btn-danger" onclick="toggleBan('${u.id}',true)">정지</button>`}</td></tr>`).join('');
+    <td class="actions"><button class="btn btn-sm btn-primary" data-uid="${esc(u.id)}" onclick="viewUser(this.dataset.uid)">상세</button>
+    ${u.banned?`<button class="btn btn-sm btn-success" data-uid="${esc(u.id)}" onclick="toggleBan(this.dataset.uid,false)">해제</button>`:`<button class="btn btn-sm btn-danger" data-uid="${esc(u.id)}" onclick="toggleBan(this.dataset.uid,true)">정지</button>`}</td></tr>`).join('');
 }
 document.getElementById('userSearch').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
   renderUsers(allUsers.filter(u => (u.nickname||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q)));
 });
 async function viewUser(uid) {
-  const doc = await db.collection('users').doc(uid).get(); const u = doc.data();
+  const doc = await db.collection('users').doc(uid).get();
+  if (!doc.exists) { alert('사용자를 찾을 수 없습니다'); return; }
+  const u = doc.data();
   showModal(`<h2>사용자 상세</h2>
-    <div class="modal-field"><label>UID</label><input value="${uid}" readonly></div>
-    <div class="modal-field"><label>닉네임</label><input value="${u.nickname||''}" readonly></div>
-    <div class="modal-field"><label>이메일</label><input value="${u.email||''}" readonly></div>
-    <div class="modal-field"><label>자기소개</label><textarea readonly>${u.bio||''}</textarea></div>
+    <div class="modal-field"><label>UID</label><input value="${esc(uid)}" readonly></div>
+    <div class="modal-field"><label>닉네임</label><input value="${esc(u.nickname)}" readonly></div>
+    <div class="modal-field"><label>이메일</label><input value="${esc(u.email)}" readonly></div>
+    <div class="modal-field"><label>자기소개</label><textarea readonly>${esc(u.bio)}</textarea></div>
     <div class="modal-field"><label>게시글 수</label><input value="${u.postCount||0}" readonly></div>
     <div class="modal-field"><label>가입일</label><input value="${formatDate(u.createdAt)}" readonly></div>
     <div class="modal-actions">
-      <button class="btn btn-danger" onclick="toggleBan('${uid}',${!u.banned}); closeModal();">${u.banned?'정지 해제':'사용자 정지'}</button>
+      <button class="btn btn-danger" onclick="toggleBan('${esc(uid)}',${!u.banned}); closeModal();">${u.banned?'정지 해제':'사용자 정지'}</button>
       <button class="btn" onclick="closeModal()">닫기</button></div>`);
 }
 async function toggleBan(uid, ban) {
@@ -768,25 +771,27 @@ async function loadPosts() {
 function renderPosts(posts) {
   if (!posts.length) { document.getElementById('postsTable').innerHTML = '<tr><td colspan="7" class="empty">게시글이 없습니다</td></tr>'; return; }
   document.getElementById('postsTable').innerHTML = posts.map(p => `<tr>
-    <td class="truncate">${p.title||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':(p.user||'-')}</td>
-    <td><span class="badge-category">${p.category||'-'}</span></td><td>${p.likes||0}</td><td>${p.commentCount||0}</td>
+    <td class="truncate">${esc(p.title)||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':esc(p.user)||'-'}</td>
+    <td><span class="badge-category">${esc(p.category)||'-'}</span></td><td>${p.likes||0}</td><td>${p.commentCount||0}</td>
     <td>${formatDateShort(p.timestamp||p.createdAt)}</td>
-    <td class="actions"><button class="btn btn-sm btn-primary" onclick="viewPost('${p.id}')">상세</button><button class="btn btn-sm btn-danger" onclick="deletePost('${p.id}')">삭제</button></td></tr>`).join('');
+    <td class="actions"><button class="btn btn-sm btn-primary" data-pid="${esc(p.id)}" onclick="viewPost(this.dataset.pid)">상세</button><button class="btn btn-sm btn-danger" data-pid="${esc(p.id)}" onclick="deletePost(this.dataset.pid)">삭제</button></td></tr>`).join('');
 }
 document.getElementById('postSearch').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
   renderPosts(allPosts.filter(p => (p.title||'').toLowerCase().includes(q) || (p.text||'').toLowerCase().includes(q)));
 });
 async function viewPost(postId) {
-  const doc = await db.collection('posts').doc(postId).get(); const p = doc.data();
+  const doc = await db.collection('posts').doc(postId).get();
+  if (!doc.exists) { alert('게시글을 찾을 수 없습니다'); return; }
+  const p = doc.data();
   showModal(`<h2>게시글 상세</h2>
-    <div class="modal-field"><label>제목</label><input value="${p.title||''}" readonly></div>
-    <div class="modal-field"><label>작성자</label><input value="${p.isAnonymous?'익명':(p.user||'-')}" readonly></div>
-    <div class="modal-field"><label>카테고리</label><input value="${p.category||'-'}" readonly></div>
-    <div class="modal-field"><label>내용</label><textarea readonly>${p.text||''}</textarea></div>
+    <div class="modal-field"><label>제목</label><input value="${esc(p.title)}" readonly></div>
+    <div class="modal-field"><label>작성자</label><input value="${p.isAnonymous?'익명':esc(p.user)||'-'}" readonly></div>
+    <div class="modal-field"><label>카테고리</label><input value="${esc(p.category)||'-'}" readonly></div>
+    <div class="modal-field"><label>내용</label><textarea readonly>${esc(p.text)}</textarea></div>
     <div class="modal-field"><label>좋아요 / 댓글</label><input value="${p.likes||0} / ${p.commentCount||0}" readonly></div>
     <div class="modal-field"><label>작성일</label><input value="${formatDate(p.timestamp||p.createdAt)}" readonly></div>
-    <div class="modal-actions"><button class="btn btn-danger" onclick="deletePost('${postId}'); closeModal();">삭제</button><button class="btn" onclick="closeModal()">닫기</button></div>`);
+    <div class="modal-actions"><button class="btn btn-danger" onclick="deletePost('${esc(postId)}'); closeModal();">삭제</button><button class="btn" onclick="closeModal()">닫기</button></div>`);
 }
 async function deletePost(postId) {
   if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
@@ -817,11 +822,11 @@ async function loadComments() {
 function renderComments(comments) {
   if (!comments.length) { document.getElementById('commentsTable').innerHTML = '<tr><td colspan="5" class="empty">댓글이 없습니다</td></tr>'; return; }
   document.getElementById('commentsTable').innerHTML = comments.slice(0, 50).map(c => `<tr>
-    <td class="truncate" style="max-width:250px;">${c.text || '-'}</td>
-    <td>${c.user || '익명'}</td>
-    <td class="truncate" style="max-width:150px;">${c.postTitle}</td>
+    <td class="truncate" style="max-width:250px;">${esc(c.text) || '-'}</td>
+    <td>${esc(c.user) || '익명'}</td>
+    <td class="truncate" style="max-width:150px;">${esc(c.postTitle)}</td>
     <td>${formatDate(c.timestamp)}</td>
-    <td class="actions"><button class="btn btn-sm btn-danger" onclick="deleteComment('${c.postId}','${c.id}')">삭제</button></td></tr>`).join('');
+    <td class="actions"><button class="btn btn-sm btn-danger" data-pid="${esc(c.postId)}" data-cid="${esc(c.id)}" onclick="deleteComment(this.dataset.pid,this.dataset.cid)">삭제</button></td></tr>`).join('');
 }
 document.getElementById('commentSearch').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
@@ -846,19 +851,30 @@ function renderReports(reports) {
   if (!filtered.length) { document.getElementById('reportsTable').innerHTML = '<tr><td colspan="8" class="empty">신고가 없습니다</td></tr>'; return; }
   document.getElementById('reportsTable').innerHTML = filtered.map(r => `<tr>
     <td>${r.targetType==='post'?'게시글':r.targetType==='comment'?'댓글':'사용자'}</td>
-    <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;">${r.targetId||'-'}</td>
-    <td>${r.reason||'-'}</td><td class="truncate">${r.detail||'-'}</td>
-    <td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;">${r.reporterId||'-'}</td>
+    <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;">${esc(r.targetId)||'-'}</td>
+    <td>${esc(r.reason)||'-'}</td><td class="truncate">${esc(r.detail)||'-'}</td>
+    <td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;">${esc(r.reporterId)||'-'}</td>
     <td>${formatDate(r.createdAt)}</td>
     <td><span class="badge-status ${r.status==='pending'?'badge-pending':'badge-resolved'}">${r.status==='pending'?'미처리':'처리완료'}</span></td>
-    <td class="actions">${r.status==='pending'?`<button class="btn btn-sm btn-success" onclick="resolveReport('${r.id}')">처리</button><button class="btn btn-sm btn-danger" onclick="deleteReportedContent('${r.id}','${r.targetType}','${r.targetId}')">삭제+처리</button>`:'<span style="color:#888;font-size:12px;">완료</span>'}</td></tr>`).join('');
+    <td class="actions">${r.status==='pending'?`<button class="btn btn-sm btn-success" data-rid="${esc(r.id)}" onclick="resolveReport(this.dataset.rid)">처리</button><button class="btn btn-sm btn-danger" data-rid="${esc(r.id)}" data-type="${esc(r.targetType)}" data-tid="${esc(r.targetId)}" onclick="deleteReportedContent(this.dataset.rid,this.dataset.type,this.dataset.tid)">삭제+처리</button>`:'<span style="color:#888;font-size:12px;">완료</span>'}</td></tr>`).join('');
 }
 document.getElementById('reportFilter').addEventListener('change', () => renderReports(allReports));
 async function resolveReport(id) { await db.collection('reports').doc(id).update({ status: 'resolved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() }); loadReports(); loadDashboard(); }
 async function deleteReportedContent(id, type, targetId) {
   if (!confirm('신고된 콘텐츠를 삭제하고 처리하시겠습니까?')) return;
-  if (type === 'post') await db.collection('posts').doc(targetId).delete();
-  await db.collection('reports').doc(id).update({ status: 'resolved', action: 'deleted', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  try {
+    if (type === 'post') {
+      await db.collection('posts').doc(targetId).delete();
+    } else if (type === 'comment') {
+      // targetId 형식: postId/comments/commentId
+      const parts = targetId.split('/');
+      if (parts.length >= 3) {
+        await db.collection('posts').doc(parts[0]).collection('comments').doc(parts[2]).delete();
+        await db.collection('posts').doc(parts[0]).update({ commentCount: firebase.firestore.FieldValue.increment(-1) });
+      }
+    }
+    await db.collection('reports').doc(id).update({ status: 'resolved', action: 'deleted', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  } catch (e) { alert('삭제 실패: ' + e.message); }
   loadReports(); loadDashboard();
 }
 
@@ -867,8 +883,9 @@ let pushPosts = [], selectedPushPost = null;
 function calcPopularityScore(post) {
   const likes = post.likes || 0;
   const comments = post.commentCount || 0;
-  const ts = post.timestamp ? (post.timestamp.toDate ? post.timestamp.toDate().getTime() : new Date(post.timestamp).getTime()) : Date.now();
-  const hoursAgo = (Date.now() - ts) / (1000 * 60 * 60);
+  const ts = post.timestamp ? (post.timestamp.toDate ? post.timestamp.toDate().getTime() : new Date(post.timestamp).getTime()) : 0;
+  if (!ts || isNaN(ts)) return 0;
+  const hoursAgo = Math.max(0, (Date.now() - ts) / (1000 * 60 * 60));
   return (likes + comments * 2) / Math.pow(hoursAgo + 2, 1.5);
 }
 async function loadPushPosts() {
@@ -898,11 +915,11 @@ document.getElementById('pushTimeFilter').addEventListener('change', filterPushP
 function renderPushPosts(posts) {
   if (!posts.length) { document.getElementById('pushPostsTable').innerHTML = '<tr><td colspan="9" class="empty">게시글이 없습니다</td></tr>'; return; }
   document.getElementById('pushPostsTable').innerHTML = posts.map(p => `<tr>
-    <td><input type="radio" name="pushSelect" value="${p.id}" onchange="selectPushPost('${p.id}')"></td>
-    <td class="truncate">${p.title||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':(p.user||'-')}</td>
-    <td><span class="badge-category">${p.category||'-'}</span></td><td><strong>${p.likes||0}</strong></td>
+    <td><input type="radio" name="pushSelect" value="${esc(p.id)}" onchange="selectPushPost('${esc(p.id)}')"></td>
+    <td class="truncate">${esc(p.title)||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':esc(p.user)||'-'}</td>
+    <td><span class="badge-category">${esc(p.category)||'-'}</span></td><td><strong>${p.likes||0}</strong></td>
     <td>${p.commentCount||0}</td><td><strong style="color:#667eea;">${(p._score||0).toFixed(2)}</strong></td><td>${formatDateShort(p.timestamp||p.createdAt)}</td>
-    <td><button class="btn btn-sm btn-warning" onclick="quickPush('${p.id}')">바로 발송</button></td></tr>`).join('');
+    <td><button class="btn btn-sm btn-warning" data-pid="${esc(p.id)}" onclick="quickPush(this.dataset.pid)">바로 발송</button></td></tr>`).join('');
 }
 function selectPushPost(postId) {
   selectedPushPost = pushPosts.find(p => p.id === postId); if (!selectedPushPost) return;
@@ -917,6 +934,7 @@ function cancelPush() { selectedPushPost = null; document.getElementById('pushPr
 function quickPush(postId) { selectedPushPost = pushPosts.find(p => p.id === postId); if (!selectedPushPost) return; document.getElementById('pushCustomTitle').value = '🔥 인기글 알림'; document.getElementById('pushCustomBody').value = selectedPushPost.title || ''; sendPush(); }
 async function sendPush() {
   if (!selectedPushPost) { alert('게시글을 선택하세요'); return; }
+  if (!auth.currentUser) { alert('로그인이 필요합니다'); return; }
   const title = document.getElementById('pushCustomTitle').value.trim() || '🔥 인기글 알림';
   const body = document.getElementById('pushCustomBody').value.trim() || selectedPushPost.title;
   if (!confirm(`푸시 알림을 전체 사용자에게 발송합니다.\n\n제목: ${title}\n내용: ${body}\n\n발송하시겠습니까?`)) return;
@@ -932,7 +950,7 @@ async function loadPushLogs() {
   try {
     const snap = await db.collection('pushLogs').orderBy('createdAt', 'desc').limit(20).get();
     if (snap.empty) { document.getElementById('pushLogTable').innerHTML = '<tr><td colspan="4" class="empty">발송 기록이 없습니다</td></tr>'; return; }
-    document.getElementById('pushLogTable').innerHTML = snap.docs.map(doc => { const d = doc.data(); return `<tr><td>${d.title||'-'}</td><td class="truncate">${d.body||'-'}</td><td>${formatDate(d.createdAt)}</td><td><span class="badge-status badge-resolved">발송됨</span></td></tr>`; }).join('');
+    document.getElementById('pushLogTable').innerHTML = snap.docs.map(doc => { const d = doc.data(); return `<tr><td>${esc(d.title)||'-'}</td><td class="truncate">${esc(d.body)||'-'}</td><td>${formatDate(d.createdAt)}</td><td><span class="badge-status badge-resolved">발송됨</span></td></tr>`; }).join('');
   } catch (e) { document.getElementById('pushLogTable').innerHTML = '<tr><td colspan="4" class="empty">기록을 불러올 수 없습니다</td></tr>'; }
 }
 

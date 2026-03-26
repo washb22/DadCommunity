@@ -31,7 +31,12 @@ export default function HomeFeedScreen({navigation}: any) {
 
   const sortedPosts =
     activeTab === '인기'
-      ? [...filteredPosts].sort((a, b) => b.likes - a.likes)
+      ? [...filteredPosts].sort((a, b) => {
+          const now = Date.now();
+          const scoreA = ((a.likes || 0) + (a.comments?.length || 0) * 2) / Math.pow(((now - (a.timestamp || now)) / 3600000) + 2, 1.5);
+          const scoreB = ((b.likes || 0) + (b.comments?.length || 0) * 2) / Math.pow(((now - (b.timestamp || now)) / 3600000) + 2, 1.5);
+          return scoreB - scoreA;
+        })
       : filteredPosts;
 
   const displayedPosts = sortedPosts.slice(0, displayCount);
