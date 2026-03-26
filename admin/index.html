@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>아빠커뮤니티 관리자</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', -apple-system, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+    /* Login */
+    .login-container {
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .login-box {
+      background: #fff; border-radius: 16px; padding: 48px; width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;
+    }
+    .login-box h1 { font-size: 24px; margin-bottom: 8px; }
+    .login-box p { color: #666; margin-bottom: 32px; }
+    .login-input {
+      width: 100%; padding: 14px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 15px; margin-bottom: 12px; outline: none;
+    }
+    .login-input:focus { border-color: #667eea; }
+    .btn-login {
+      width: 100%; padding: 14px; border: none; border-radius: 8px;
+      background: #667eea; color: #fff; cursor: pointer; font-size: 16px;
+      font-weight: 600; transition: all 0.2s;
+    }
+    .btn-login:hover { background: #5a6fd6; }
+    .login-error { color: #e74c3c; margin-top: 16px; font-size: 14px; display: none; }
+
+    /* Layout */
+    .app { display: none; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+      background: #1a1a2e; color: #fff; padding: 24px 0; z-index: 100;
+      overflow-y: auto;
+    }
+    .sidebar-logo { padding: 0 24px 24px; border-bottom: 1px solid #2a2a4a; font-size: 18px; font-weight: 700; }
+    .sidebar-logo span { color: #667eea; }
+    .sidebar-user { padding: 16px 24px; border-bottom: 1px solid #2a2a4a; font-size: 13px; color: #aaa; }
+    .sidebar-user strong { display: block; color: #fff; font-size: 14px; margin-bottom: 2px; }
+    .sidebar-menu { list-style: none; padding: 12px 0; }
+    .sidebar-menu li {
+      padding: 12px 24px; cursor: pointer; display: flex; align-items: center; gap: 12px;
+      color: #8888aa; transition: all 0.2s; font-size: 14px;
+    }
+    .sidebar-menu li:hover { background: #2a2a4a; color: #fff; }
+    .sidebar-menu li.active { background: #667eea22; color: #667eea; border-right: 3px solid #667eea; }
+    .sidebar-menu li .badge {
+      margin-left: auto; background: #e74c3c; color: #fff; font-size: 11px;
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .sidebar-divider { border-top: 1px solid #2a2a4a; margin: 8px 24px; }
+    .sidebar-label { padding: 8px 24px 4px; font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-logout {
+      position: sticky; bottom: 0; margin: 12px 24px; padding: 10px;
+      border: 1px solid #444; border-radius: 8px;
+      background: #1a1a2e; color: #aaa; cursor: pointer; font-size: 13px; width: calc(100% - 48px);
+    }
+    .btn-logout:hover { background: #2a2a4a; color: #fff; }
+
+    .main { margin-left: 240px; padding: 32px; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
+
+    /* Stats Cards */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .stat-card .label { font-size: 13px; color: #888; margin-bottom: 8px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; }
+    .stat-card .sub { font-size: 12px; color: #888; margin-top: 4px; }
+
+    /* Table & Card */
+    .card {
+      background: #fff; border-radius: 12px; padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px;
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+    }
+    .card-header h2 { font-size: 18px; }
+    .search-box {
+      padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 14px; width: 250px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 12px; border-bottom: 2px solid #eee; font-size: 13px; color: #888; }
+    td { padding: 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+    tr:hover { background: #f8f9ff; }
+
+    .badge-status { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-resolved { background: #d4edda; color: #155724; }
+    .badge-active { background: #d4edda; color: #155724; }
+    .badge-banned { background: #f8d7da; color: #721c24; }
+    .badge-category { background: #e8eaff; color: #667eea; padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+
+    .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .btn-danger { background: #fee; color: #e74c3c; }
+    .btn-danger:hover { background: #e74c3c; color: #fff; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover { background: #5a6fd6; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-success { background: #d4edda; color: #155724; }
+    .btn-success:hover { background: #27ae60; color: #fff; }
+    .btn-warning { background: #fff3cd; color: #856404; }
+    .btn-warning:hover { background: #f0ad4e; color: #fff; }
+    .actions { display: flex; gap: 6px; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 200; align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: 16px; padding: 32px; width: 500px;
+      max-height: 80vh; overflow-y: auto;
+    }
+    .modal h2 { margin-bottom: 20px; }
+    .modal-field { margin-bottom: 16px; }
+    .modal-field label { display: block; font-size: 13px; color: #888; margin-bottom: 4px; }
+    .modal-field input, .modal-field textarea, .modal-field select {
+      width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+    }
+    .modal-field textarea { min-height: 80px; resize: vertical; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+    .empty { text-align: center; padding: 48px; color: #888; }
+    .loading { text-align: center; padding: 48px; color: #888; }
+    .truncate { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .notif-form textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; }
+    .notif-form input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; }
+
+    /* Charts */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+    .chart-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .chart-card h3 { font-size: 16px; margin-bottom: 16px; }
+    .chart-card canvas { max-height: 250px; }
+
+    /* Banner/Popup */
+    .banner-preview {
+      background: #f8f9ff; border: 2px dashed #ddd; border-radius: 12px; padding: 20px;
+      text-align: center; margin-bottom: 16px; min-height: 80px;
+    }
+    .toggle-switch { display: flex; align-items: center; gap: 8px; }
+    .toggle-switch input[type="checkbox"] { width: 40px; height: 22px; cursor: pointer; }
+
+    /* Category sortable */
+    .cat-list { list-style: none; }
+    .cat-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      background: #fff; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px;
+    }
+    .cat-item .drag-handle { cursor: grab; color: #888; font-size: 18px; }
+    .cat-item .cat-icon { font-size: 24px; }
+    .cat-item .cat-info { flex: 1; }
+    .cat-item .cat-info strong { display: block; }
+    .cat-item .cat-info span { font-size: 12px; color: #888; }
+
+    /* Stats page */
+    .stats-big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .stat-big-card {
+      background: #fff; border-radius: 12px; padding: 24px; text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .stat-big-card .big-value { font-size: 36px; font-weight: 700; color: #667eea; }
+    .stat-big-card .big-label { font-size: 14px; color: #888; margin-top: 4px; }
+
+    /* Keyword */
+    .keyword-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .keyword-tag {
+      background: #e8eaff; color: #667eea; padding: 8px 16px; border-radius: 20px;
+      font-size: 14px; font-weight: 500;
+    }
+    .keyword-tag .count { color: #888; font-size: 12px; margin-left: 4px; }
+
+    @media (max-width: 1200px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .chart-row { grid-template-columns: 1fr; }
+      .stats-big { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-container" id="loginScreen">
+  <div class="login-box">
+    <h1>아빠커뮤니티</h1>
+    <p>관리자 페이지</p>
+    <input type="email" class="login-input" id="loginEmail" placeholder="이메일" autocomplete="email">
+    <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password">
+    <button class="btn-login" id="btnLogin">로그인</button>
+    <p class="login-error" id="loginError"></p>
+  </div>
+</div>
+
+<!-- Admin App -->
+<div class="app" id="adminApp">
+  <nav class="sidebar">
+    <div class="sidebar-logo">아빠커뮤니티 <span>Admin</span></div>
+    <div class="sidebar-user" id="sidebarUser">
+      <strong>관리자</strong>
+      <span>admin@example.com</span>
+    </div>
+    <ul class="sidebar-menu">
+      <li class="active" data-page="dashboard">📊 대시보드</li>
+      <li data-page="stats">📈 통계/분석</li>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-label">관리</div>
+      <li data-page="users">👥 사용자</li>
+      <li data-page="posts">📝 게시글</li>
+      <li data-page="comments">💬 댓글</li>
+      <li data-page="reports">🚨 신고 <span class="badge" id="reportBadge" style="display:none">0</span></li>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-label">운영</div>
+      <li data-page="push">🔥 인기글 푸시</li>
+      <li data-page="notifications">🔔 공지/알림</li>
+      <li data-page="banners">🖼️ 배너/팝업</li>
+      <li data-page="categories">📂 카테고리</li>
+      <li data-page="appversion">📱 앱 버전</li>
+    </ul>
+    <button class="btn-logout" id="btnLogout">로그아웃</button>
+  </nav>
+
+  <div class="main">
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div class="page active" id="page-dashboard">
+      <h1 class="page-title">대시보드</h1>
+      <div class="stats">
+        <div class="stat-card"><div class="label">전체 사용자</div><div class="value" id="statUsers">-</div></div>
+        <div class="stat-card"><div class="label">전체 게시글</div><div class="value" id="statPosts">-</div></div>
+        <div class="stat-card"><div class="label">미처리 신고</div><div class="value" id="statReports">-</div></div>
+        <div class="stat-card"><div class="label">오늘 신규 가입</div><div class="value" id="statNewUsers">-</div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>일별 가입자 수 (최근 14일)</h3><canvas id="chartSignups"></canvas></div>
+        <div class="chart-card"><h3>일별 게시글 수 (최근 14일)</h3><canvas id="chartPosts"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>최근 게시글</h2></div>
+        <table>
+          <thead><tr><th>제목</th><th>작성자</th><th>카테고리</th><th>좋아요</th><th>댓글</th></tr></thead>
+          <tbody id="recentPostsTable"><tr><td colspan="5" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>최근 신고</h2></div>
+        <table>
+          <thead><tr><th>유형</th><th>사유</th><th>상태</th><th>일시</th></tr></thead>
+          <tbody id="recentReportsTable"><tr><td colspan="4" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== STATS ==================== -->
+    <div class="page" id="page-stats">
+      <h1 class="page-title">통계/분석</h1>
+      <div class="stats-big">
+        <div class="stat-big-card"><div class="big-value" id="statDAU">-</div><div class="big-label">오늘 활성 사용자 (DAU)</div></div>
+        <div class="stat-big-card"><div class="big-value" id="statMAU">-</div><div class="big-label">월간 활성 사용자 (MAU)</div></div>
+        <div class="stat-big-card"><div class="big-value" id="statTotalPosts">-</div><div class="big-label">전체 게시글</div></div>
+      </div>
+      <div class="chart-row">
+        <div class="chart-card"><h3>DAU 추이 (최근 30일)</h3><canvas id="chartDAU"></canvas></div>
+        <div class="chart-card"><h3>카테고리별 게시글 분포</h3><canvas id="chartCategory"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>인기 검색 키워드</h2></div>
+        <div class="keyword-list" id="keywordList"><span class="empty">검색 데이터가 없습니다</span></div>
+      </div>
+    </div>
+
+    <!-- ==================== USERS ==================== -->
+    <div class="page" id="page-users">
+      <h1 class="page-title">사용자 관리</h1>
+      <div class="card">
+        <div class="card-header">
+          <h2>사용자 목록</h2>
+          <input type="text" class="search-box" placeholder="닉네임 또는 이메일 검색..." id="userSearch">
+        </div>
+        <table>
+          <thead><tr><th>닉네임</th><th>이메일</th><th>가입일</th><th>게시글</th><th>상태</th><th>관리</th></tr></thead>
+          <tbody id="usersTable"><tr><td colspan="6" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== POSTS ==================== -->
+    <div class="page" id="page-posts">
+      <h1 class="page-title">게시글 관리</h1>
+      <div class="card">
+        <div class="card-header">
+          <h2>게시글 목록</h2>
+          <input type="text" class="search-box" placeholder="제목 또는 내용 검색..." id="postSearch">
+        </div>
+        <table>
+          <thead><tr><th>제목</th><th>작성자</th><th>카테고리</th><th>좋아요</th><th>댓글</th><th>작성일</th><th>관리</th></tr></thead>
+          <tbody id="postsTable"><tr><td colspan="7" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== COMMENTS ==================== -->
+    <div class="page" id="page-comments">
+      <h1 class="page-title">댓글 관리</h1>
+      <div class="card">
+        <div class="card-header">
+          <h2>최근 댓글</h2>
+          <input type="text" class="search-box" placeholder="댓글 내용 검색..." id="commentSearch">
+        </div>
+        <table>
+          <thead><tr><th>내용</th><th>작성자</th><th>게시글</th><th>작성일</th><th>관리</th></tr></thead>
+          <tbody id="commentsTable"><tr><td colspan="5" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== REPORTS ==================== -->
+    <div class="page" id="page-reports">
+      <h1 class="page-title">신고 관리</h1>
+      <div class="card">
+        <div class="card-header">
+          <h2>신고 목록</h2>
+          <select id="reportFilter" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;">
+            <option value="all">전체</option>
+            <option value="pending">미처리</option>
+            <option value="resolved">처리완료</option>
+          </select>
+        </div>
+        <table>
+          <thead><tr><th>유형</th><th>대상</th><th>사유</th><th>상세</th><th>신고자</th><th>일시</th><th>상태</th><th>관리</th></tr></thead>
+          <tbody id="reportsTable"><tr><td colspan="8" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== PUSH ==================== -->
+    <div class="page" id="page-push">
+      <h1 class="page-title">인기글 푸시 알림</h1>
+      <div class="card">
+        <div class="card-header">
+          <h2>인기 게시글 (좋아요순)</h2>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="pushCategoryFilter" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;">
+              <option value="all">전체 카테고리</option>
+              <option value="부부관계">부부관계</option>
+              <option value="자유">자유</option>
+              <option value="취미">취미</option>
+              <option value="육아">육아</option>
+            </select>
+            <select id="pushTimeFilter" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;">
+              <option value="all">전체 기간</option>
+              <option value="today">오늘</option>
+              <option value="week">이번 주</option>
+              <option value="month">이번 달</option>
+            </select>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th style="width:40px;">선택</th><th>제목</th><th>작성자</th><th>카테고리</th><th>좋아요</th><th>댓글</th><th>점수</th><th>작성일</th><th>푸시</th></tr></thead>
+          <tbody id="pushPostsTable"><tr><td colspan="8" class="loading">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card" id="pushPreviewCard" style="display:none;">
+        <h2 style="margin-bottom:16px;">푸시 알림 미리보기</h2>
+        <div style="background:#f8f9ff;border-radius:12px;padding:20px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="font-size:20px;">📱</span><strong>아빠커뮤니티</strong><span style="color:#888;font-size:12px;">지금</span>
+          </div>
+          <div id="pushPreviewTitle" style="font-weight:600;margin-bottom:4px;"></div>
+          <div id="pushPreviewBody" style="color:#666;font-size:14px;"></div>
+        </div>
+        <div class="modal-field"><label>푸시 제목 (수정 가능)</label><input type="text" id="pushCustomTitle" placeholder="푸시 알림 제목"></div>
+        <div class="modal-field"><label>푸시 내용 (수정 가능)</label><textarea id="pushCustomBody" placeholder="푸시 알림 내용"></textarea></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" onclick="cancelPush()">취소</button>
+          <button class="btn btn-primary" id="btnSendPush" onclick="sendPush()">전체 사용자에게 푸시 발송</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:16px;">푸시 발송 기록</h2>
+        <table>
+          <thead><tr><th>제목</th><th>내용</th><th>발송일시</th><th>상태</th></tr></thead>
+          <tbody id="pushLogTable"><tr><td colspan="4" class="empty">발송 기록이 없습니다</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ==================== NOTIFICATIONS ==================== -->
+    <div class="page" id="page-notifications">
+      <h1 class="page-title">공지/알림 발송</h1>
+      <div class="card">
+        <h2 style="margin-bottom:16px;">공지사항 작성</h2>
+        <div class="notif-form">
+          <input type="text" id="notifTitle" placeholder="공지 제목">
+          <textarea id="notifContent" placeholder="공지 내용을 입력하세요..."></textarea>
+          <div style="display:flex;gap:8px;">
+            <select id="notifCategory" style="padding:10px;border:1px solid #ddd;border-radius:8px;">
+              <option value="공지">공지사항</option>
+              <option value="자유">자유게시판</option>
+            </select>
+            <button class="btn btn-primary" id="btnPostNotice">공지 게시</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== BANNERS ==================== -->
+    <div class="page" id="page-banners">
+      <h1 class="page-title">배너/팝업 관리</h1>
+      <div class="card">
+        <h2 style="margin-bottom:16px;">홈 배너</h2>
+        <div class="modal-field"><label>배너 이미지 URL</label><input type="text" id="bannerImageUrl" placeholder="https://..."></div>
+        <div class="modal-field"><label>배너 클릭 링크 (선택)</label><input type="text" id="bannerLinkUrl" placeholder="https://..."></div>
+        <div class="modal-field"><label>배너 텍스트</label><input type="text" id="bannerText" placeholder="배너에 표시할 텍스트"></div>
+        <div class="toggle-switch" style="margin-bottom:16px;">
+          <input type="checkbox" id="bannerEnabled">
+          <label for="bannerEnabled">배너 활성화</label>
+        </div>
+        <button class="btn btn-primary" onclick="saveBanner()">배너 저장</button>
+      </div>
+      <div class="card">
+        <h2 style="margin-bottom:16px;">공지 팝업</h2>
+        <div class="modal-field"><label>팝업 제목</label><input type="text" id="popupTitle" placeholder="팝업 제목"></div>
+        <div class="modal-field"><label>팝업 내용</label><textarea id="popupContent" placeholder="팝업에 표시할 내용"></textarea></div>
+        <div class="modal-field"><label>팝업 이미지 URL (선택)</label><input type="text" id="popupImageUrl" placeholder="https://..."></div>
+        <div class="toggle-switch" style="margin-bottom:16px;">
+          <input type="checkbox" id="popupEnabled">
+          <label for="popupEnabled">팝업 활성화</label>
+        </div>
+        <div class="modal-field"><label>팝업 ID (다시 보지 않기용)</label><input type="text" id="popupId" placeholder="popup_20260326"></div>
+        <button class="btn btn-primary" onclick="savePopup()">팝업 저장</button>
+      </div>
+    </div>
+
+    <!-- ==================== CATEGORIES ==================== -->
+    <div class="page" id="page-categories">
+      <h1 class="page-title">카테고리 관리</h1>
+      <div class="card">
+        <div class="card-header">
+          <h2>게시판 목록</h2>
+          <button class="btn btn-primary" onclick="showAddCategory()">+ 카테고리 추가</button>
+        </div>
+        <p style="font-size:13px;color:#888;margin-bottom:16px;">위아래 버튼으로 순서를 변경할 수 있습니다.</p>
+        <ul class="cat-list" id="categoryList"></ul>
+        <button class="btn btn-primary" onclick="saveCategories()" style="margin-top:16px;">순서 저장</button>
+      </div>
+    </div>
+
+    <!-- ==================== APP VERSION ==================== -->
+    <div class="page" id="page-appversion">
+      <h1 class="page-title">앱 버전 관리</h1>
+      <div class="card">
+        <h2 style="margin-bottom:16px;">강제 업데이트 설정</h2>
+        <div class="modal-field">
+          <label>최소 필수 버전 (Android)</label>
+          <input type="text" id="minVersionAndroid" placeholder="1.0.0">
+        </div>
+        <div class="modal-field">
+          <label>최소 필수 버전 (iOS)</label>
+          <input type="text" id="minVersionIos" placeholder="1.0.0">
+        </div>
+        <div class="modal-field">
+          <label>최신 버전</label>
+          <input type="text" id="latestVersion" placeholder="1.0.0">
+        </div>
+        <div class="modal-field">
+          <label>업데이트 메시지</label>
+          <textarea id="updateMessage" placeholder="새로운 기능이 추가되었습니다. 업데이트해주세요!"></textarea>
+        </div>
+        <div class="toggle-switch" style="margin-bottom:16px;">
+          <input type="checkbox" id="forceUpdateEnabled">
+          <label for="forceUpdateEnabled">강제 업데이트 활성화</label>
+        </div>
+        <div class="modal-field">
+          <label>Play Store URL</label>
+          <input type="text" id="playStoreUrl" placeholder="https://play.google.com/store/apps/details?id=com.dadcommunity">
+        </div>
+        <div class="modal-field">
+          <label>App Store URL</label>
+          <input type="text" id="appStoreUrl" placeholder="https://apps.apple.com/app/...">
+        </div>
+        <button class="btn btn-primary" onclick="saveAppVersion()">저장</button>
+        <span id="versionSaveStatus" style="margin-left:12px;color:#27ae60;font-size:13px;"></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyASX8kUxt0VyfTqoXHJ1ND48EzMuAIVSpM",
+  authDomain: "dadcommunity-ae202.firebaseapp.com",
+  projectId: "dadcommunity-ae202",
+  storageBucket: "dadcommunity-ae202.firebasestorage.app",
+  messagingSenderId: "868174848530",
+  appId: "1:868174848530:web:382e8e5fa822f8846ceecb",
+  measurementId: "G-J45N9ZGKRY"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+const ADMIN_EMAILS = ['sbro@sbrother.co.kr'];
+
+// ==================== AUTH ====================
+const loginScreen = document.getElementById('loginScreen');
+const adminApp = document.getElementById('adminApp');
+const loginError = document.getElementById('loginError');
+
+document.getElementById('btnLogin').onclick = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) { loginError.textContent = '이메일과 비밀번호를 입력하세요'; loginError.style.display = 'block'; return; }
+  if (!ADMIN_EMAILS.includes(email)) { loginError.textContent = '관리자 권한이 없는 이메일입니다'; loginError.style.display = 'block'; return; }
+  try { await auth.signInWithEmailAndPassword(email, password); }
+  catch (e) { loginError.textContent = '로그인 실패: ' + e.message; loginError.style.display = 'block'; }
+};
+document.getElementById('loginPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('btnLogin').click(); });
+document.getElementById('btnLogout').onclick = () => auth.signOut();
+
+auth.onAuthStateChanged(async (user) => {
+  if (user && ADMIN_EMAILS.includes(user.email)) {
+    loginScreen.style.display = 'none';
+    adminApp.style.display = 'block';
+    document.getElementById('sidebarUser').innerHTML = `<strong>관리자</strong><span>${user.email}</span>`;
+    loadDashboard();
+  } else {
+    if (user) await auth.signOut();
+    loginScreen.style.display = 'flex';
+    adminApp.style.display = 'none';
+  }
+});
+
+// ==================== NAVIGATION ====================
+document.querySelectorAll('.sidebar-menu li').forEach(li => {
+  li.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-menu li').forEach(l => l.classList.remove('active'));
+    li.classList.add('active');
+    const page = li.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    const loaders = {
+      dashboard: loadDashboard, stats: loadStats, users: loadUsers, posts: loadPosts,
+      comments: loadComments, reports: loadReports, push: loadPushPosts,
+      banners: loadBanners, categories: loadCategories, appversion: loadAppVersion
+    };
+    if (loaders[page]) loaders[page]();
+  });
+});
+
+// ==================== MODAL ====================
+function showModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.add('show'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+document.getElementById('modalOverlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+
+// ==================== HELPERS ====================
+function formatDate(ts) { if (!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}); }
+function formatDateShort(ts) { if (!ts) return '-'; const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('ko-KR'); }
+function getDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); d.setHours(0,0,0,0); return d; }
+function dateLabel(d) { return (d.getMonth()+1) + '/' + d.getDate(); }
+
+// ==================== DASHBOARD ====================
+let dashChartSignups, dashChartPosts;
+
+async function loadDashboard() {
+  try {
+    const [usersSnap, postsSnap, reportsSnap, allPostsSnap] = await Promise.all([
+      db.collection('users').get(),
+      db.collection('posts').orderBy('timestamp', 'desc').limit(10).get(),
+      db.collection('reports').orderBy('createdAt', 'desc').limit(10).get(),
+      db.collection('posts').get(),
+    ]);
+    const pendingReports = reportsSnap.docs.filter(d => d.data().status === 'pending');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const newToday = usersSnap.docs.filter(d => { const c = d.data().createdAt; if (!c) return false; return (c.toDate ? c.toDate() : new Date(c)) >= today; });
+
+    document.getElementById('statUsers').textContent = usersSnap.size;
+    document.getElementById('statPosts').textContent = allPostsSnap.size;
+    document.getElementById('statReports').textContent = pendingReports.length;
+    document.getElementById('statNewUsers').textContent = newToday.length;
+
+    const badge = document.getElementById('reportBadge');
+    if (pendingReports.length > 0) { badge.textContent = pendingReports.length; badge.style.display = 'inline'; }
+    else { badge.style.display = 'none'; }
+
+    // Charts - 14 days
+    const labels14 = [], signupData = [], postData = [];
+    for (let i = 13; i >= 0; i--) {
+      const dayStart = getDaysAgo(i);
+      const dayEnd = getDaysAgo(i - 1);
+      labels14.push(dateLabel(dayStart));
+      signupData.push(usersSnap.docs.filter(d => { const c = d.data().createdAt; if (!c) return false; const dt = c.toDate ? c.toDate() : new Date(c); return dt >= dayStart && dt < dayEnd; }).length);
+      postData.push(allPostsSnap.docs.filter(d => { const c = d.data().timestamp || d.data().createdAt; if (!c) return false; const dt = c.toDate ? c.toDate() : new Date(c); return dt >= dayStart && dt < dayEnd; }).length);
+    }
+
+    if (dashChartSignups) dashChartSignups.destroy();
+    if (dashChartPosts) dashChartPosts.destroy();
+    dashChartSignups = new Chart(document.getElementById('chartSignups'), {
+      type: 'bar', data: { labels: labels14, datasets: [{ label: '가입자', data: signupData, backgroundColor: '#667eea88', borderRadius: 4 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+    dashChartPosts = new Chart(document.getElementById('chartPosts'), {
+      type: 'bar', data: { labels: labels14, datasets: [{ label: '게시글', data: postData, backgroundColor: '#764ba288', borderRadius: 4 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+
+    // Recent posts
+    document.getElementById('recentPostsTable').innerHTML = postsSnap.docs.length === 0
+      ? '<tr><td colspan="5" class="empty">게시글이 없습니다</td></tr>'
+      : postsSnap.docs.map(doc => { const d = doc.data(); return `<tr><td class="truncate">${d.title||'(제목 없음)'}</td><td>${d.isAnonymous?'익명':(d.user||'-')}</td><td><span class="badge-category">${d.category||'-'}</span></td><td>${d.likes||0}</td><td>${d.commentCount||0}</td></tr>`; }).join('');
+
+    // Recent reports
+    document.getElementById('recentReportsTable').innerHTML = reportsSnap.docs.length === 0
+      ? '<tr><td colspan="4" class="empty">신고가 없습니다</td></tr>'
+      : reportsSnap.docs.map(doc => { const d = doc.data(); return `<tr><td>${d.targetType||'-'}</td><td>${d.reason||'-'}</td><td><span class="badge-status ${d.status==='pending'?'badge-pending':'badge-resolved'}">${d.status==='pending'?'미처리':'처리완료'}</span></td><td>${formatDate(d.createdAt)}</td></tr>`; }).join('');
+  } catch (e) { console.error('Dashboard error:', e); }
+}
+
+// ==================== STATS ====================
+let chartDAUInst, chartCatInst;
+
+async function loadStats() {
+  try {
+    const [usersSnap, postsSnap, searchSnap] = await Promise.all([
+      db.collection('users').get(),
+      db.collection('posts').get(),
+      db.collection('searchLogs').orderBy('count', 'desc').limit(20).get().catch(() => ({ docs: [] })),
+    ]);
+
+    // DAU/MAU from activityLogs
+    const actSnap = await db.collection('activityLogs').orderBy('date', 'desc').limit(30).get().catch(() => ({ docs: [] }));
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const monthAgo = getDaysAgo(30);
+
+    // Estimate DAU/MAU from users collection lastActive field, or fallback to activityLogs
+    let dauCount = 0, mauCount = 0;
+    if (actSnap.docs.length > 0) {
+      const todayStr = today.toISOString().slice(0,10);
+      const todayLog = actSnap.docs.find(d => d.data().date === todayStr);
+      dauCount = todayLog ? todayLog.data().activeUsers : 0;
+      mauCount = actSnap.docs.reduce((sum, d) => sum + (d.data().activeUsers || 0), 0);
+    } else {
+      // Fallback: count users with recent activity
+      dauCount = usersSnap.docs.filter(d => { const la = d.data().lastActive; if (!la) return false; return (la.toDate ? la.toDate() : new Date(la)) >= today; }).length;
+      mauCount = usersSnap.docs.filter(d => { const la = d.data().lastActive; if (!la) return false; return (la.toDate ? la.toDate() : new Date(la)) >= monthAgo; }).length;
+    }
+
+    document.getElementById('statDAU').textContent = dauCount;
+    document.getElementById('statMAU').textContent = mauCount;
+    document.getElementById('statTotalPosts').textContent = postsSnap.size;
+
+    // DAU chart (30 days)
+    const labels30 = [], dauData = [];
+    for (let i = 29; i >= 0; i--) {
+      const dayStart = getDaysAgo(i);
+      const dayEnd = getDaysAgo(i - 1);
+      labels30.push(dateLabel(dayStart));
+      if (actSnap.docs.length > 0) {
+        const dayStr = dayStart.toISOString().slice(0,10);
+        const log = actSnap.docs.find(d => d.data().date === dayStr);
+        dauData.push(log ? log.data().activeUsers : 0);
+      } else {
+        dauData.push(usersSnap.docs.filter(d => { const la = d.data().lastActive; if (!la) return false; const dt = la.toDate ? la.toDate() : new Date(la); return dt >= dayStart && dt < dayEnd; }).length);
+      }
+    }
+
+    if (chartDAUInst) chartDAUInst.destroy();
+    chartDAUInst = new Chart(document.getElementById('chartDAU'), {
+      type: 'line', data: { labels: labels30, datasets: [{ label: 'DAU', data: dauData, borderColor: '#667eea', backgroundColor: '#667eea22', fill: true, tension: 0.3 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Category chart
+    const catCounts = {};
+    postsSnap.docs.forEach(d => { const cat = d.data().category || '기타'; catCounts[cat] = (catCounts[cat] || 0) + 1; });
+    const catLabels = Object.keys(catCounts);
+    const catData = Object.values(catCounts);
+    const catColors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
+
+    if (chartCatInst) chartCatInst.destroy();
+    chartCatInst = new Chart(document.getElementById('chartCategory'), {
+      type: 'doughnut', data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: catColors.slice(0, catLabels.length) }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Keywords
+    if (searchSnap.docs.length > 0) {
+      document.getElementById('keywordList').innerHTML = searchSnap.docs.map(d => {
+        const data = d.data();
+        return `<span class="keyword-tag">${data.keyword || d.id}<span class="count">${data.count || 0}</span></span>`;
+      }).join('');
+    } else {
+      document.getElementById('keywordList').innerHTML = '<span class="empty" style="padding:16px;">검색 로그가 쌓이면 여기에 인기 키워드가 표시됩니다</span>';
+    }
+  } catch (e) { console.error('Stats error:', e); }
+}
+
+// ==================== USERS ====================
+let allUsers = [];
+async function loadUsers() {
+  try {
+    const snap = await db.collection('users').get();
+    allUsers = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderUsers(allUsers);
+  } catch (e) { document.getElementById('usersTable').innerHTML = '<tr><td colspan="6" class="empty">불러올 수 없습니다</td></tr>'; }
+}
+function renderUsers(users) {
+  if (!users.length) { document.getElementById('usersTable').innerHTML = '<tr><td colspan="6" class="empty">사용자가 없습니다</td></tr>'; return; }
+  document.getElementById('usersTable').innerHTML = users.map(u => `<tr>
+    <td>${u.avatar||''} ${u.nickname||'(없음)'}</td><td>${u.email||'-'}</td><td>${formatDateShort(u.createdAt)}</td><td>${u.postCount||0}</td>
+    <td><span class="badge-status ${u.banned?'badge-banned':'badge-active'}">${u.banned?'정지':'활성'}</span></td>
+    <td class="actions"><button class="btn btn-sm btn-primary" onclick="viewUser('${u.id}')">상세</button>
+    ${u.banned?`<button class="btn btn-sm btn-success" onclick="toggleBan('${u.id}',false)">해제</button>`:`<button class="btn btn-sm btn-danger" onclick="toggleBan('${u.id}',true)">정지</button>`}</td></tr>`).join('');
+}
+document.getElementById('userSearch').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  renderUsers(allUsers.filter(u => (u.nickname||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q)));
+});
+async function viewUser(uid) {
+  const doc = await db.collection('users').doc(uid).get(); const u = doc.data();
+  showModal(`<h2>사용자 상세</h2>
+    <div class="modal-field"><label>UID</label><input value="${uid}" readonly></div>
+    <div class="modal-field"><label>닉네임</label><input value="${u.nickname||''}" readonly></div>
+    <div class="modal-field"><label>이메일</label><input value="${u.email||''}" readonly></div>
+    <div class="modal-field"><label>자기소개</label><textarea readonly>${u.bio||''}</textarea></div>
+    <div class="modal-field"><label>게시글 수</label><input value="${u.postCount||0}" readonly></div>
+    <div class="modal-field"><label>가입일</label><input value="${formatDate(u.createdAt)}" readonly></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="toggleBan('${uid}',${!u.banned}); closeModal();">${u.banned?'정지 해제':'사용자 정지'}</button>
+      <button class="btn" onclick="closeModal()">닫기</button></div>`);
+}
+async function toggleBan(uid, ban) {
+  if (!confirm(ban ? '이 사용자를 정지하시겠습니까?' : '정지를 해제하시겠습니까?')) return;
+  await db.collection('users').doc(uid).update({ banned: ban }); loadUsers();
+}
+
+// ==================== POSTS ====================
+let allPosts = [];
+async function loadPosts() {
+  try { const snap = await db.collection('posts').orderBy('timestamp', 'desc').get(); allPosts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderPosts(allPosts); }
+  catch (e) { document.getElementById('postsTable').innerHTML = '<tr><td colspan="7" class="empty">불러올 수 없습니다</td></tr>'; }
+}
+function renderPosts(posts) {
+  if (!posts.length) { document.getElementById('postsTable').innerHTML = '<tr><td colspan="7" class="empty">게시글이 없습니다</td></tr>'; return; }
+  document.getElementById('postsTable').innerHTML = posts.map(p => `<tr>
+    <td class="truncate">${p.title||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':(p.user||'-')}</td>
+    <td><span class="badge-category">${p.category||'-'}</span></td><td>${p.likes||0}</td><td>${p.commentCount||0}</td>
+    <td>${formatDateShort(p.timestamp||p.createdAt)}</td>
+    <td class="actions"><button class="btn btn-sm btn-primary" onclick="viewPost('${p.id}')">상세</button><button class="btn btn-sm btn-danger" onclick="deletePost('${p.id}')">삭제</button></td></tr>`).join('');
+}
+document.getElementById('postSearch').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  renderPosts(allPosts.filter(p => (p.title||'').toLowerCase().includes(q) || (p.text||'').toLowerCase().includes(q)));
+});
+async function viewPost(postId) {
+  const doc = await db.collection('posts').doc(postId).get(); const p = doc.data();
+  showModal(`<h2>게시글 상세</h2>
+    <div class="modal-field"><label>제목</label><input value="${p.title||''}" readonly></div>
+    <div class="modal-field"><label>작성자</label><input value="${p.isAnonymous?'익명':(p.user||'-')}" readonly></div>
+    <div class="modal-field"><label>카테고리</label><input value="${p.category||'-'}" readonly></div>
+    <div class="modal-field"><label>내용</label><textarea readonly>${p.text||''}</textarea></div>
+    <div class="modal-field"><label>좋아요 / 댓글</label><input value="${p.likes||0} / ${p.commentCount||0}" readonly></div>
+    <div class="modal-field"><label>작성일</label><input value="${formatDate(p.timestamp||p.createdAt)}" readonly></div>
+    <div class="modal-actions"><button class="btn btn-danger" onclick="deletePost('${postId}'); closeModal();">삭제</button><button class="btn" onclick="closeModal()">닫기</button></div>`);
+}
+async function deletePost(postId) {
+  if (!confirm('이 게시글을 삭제하시겠습니까?')) return;
+  await db.collection('posts').doc(postId).delete(); loadPosts();
+}
+
+// ==================== COMMENTS ====================
+let allComments = [];
+async function loadComments() {
+  try {
+    const postsSnap = await db.collection('posts').get();
+    allComments = [];
+    const promises = postsSnap.docs.map(async (postDoc) => {
+      const commentsSnap = await postDoc.ref.collection('comments').orderBy('timestamp', 'desc').limit(10).get();
+      commentsSnap.docs.forEach(cDoc => {
+        allComments.push({ id: cDoc.id, postId: postDoc.id, postTitle: postDoc.data().title || '(제목 없음)', ...cDoc.data() });
+      });
+    });
+    await Promise.all(promises);
+    allComments.sort((a, b) => {
+      const ta = a.timestamp ? (a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp)) : new Date(0);
+      const tb = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate() : new Date(b.timestamp)) : new Date(0);
+      return tb - ta;
+    });
+    renderComments(allComments);
+  } catch (e) { console.error('Comments error:', e); document.getElementById('commentsTable').innerHTML = '<tr><td colspan="5" class="empty">불러올 수 없습니다</td></tr>'; }
+}
+function renderComments(comments) {
+  if (!comments.length) { document.getElementById('commentsTable').innerHTML = '<tr><td colspan="5" class="empty">댓글이 없습니다</td></tr>'; return; }
+  document.getElementById('commentsTable').innerHTML = comments.slice(0, 50).map(c => `<tr>
+    <td class="truncate" style="max-width:250px;">${c.text || '-'}</td>
+    <td>${c.user || '익명'}</td>
+    <td class="truncate" style="max-width:150px;">${c.postTitle}</td>
+    <td>${formatDate(c.timestamp)}</td>
+    <td class="actions"><button class="btn btn-sm btn-danger" onclick="deleteComment('${c.postId}','${c.id}')">삭제</button></td></tr>`).join('');
+}
+document.getElementById('commentSearch').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  renderComments(allComments.filter(c => (c.text||'').toLowerCase().includes(q)));
+});
+async function deleteComment(postId, commentId) {
+  if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
+  await db.collection('posts').doc(postId).collection('comments').doc(commentId).delete();
+  await db.collection('posts').doc(postId).update({ commentCount: firebase.firestore.FieldValue.increment(-1) });
+  loadComments();
+}
+
+// ==================== REPORTS ====================
+let allReports = [];
+async function loadReports() {
+  try { const snap = await db.collection('reports').orderBy('createdAt', 'desc').get(); allReports = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderReports(allReports); }
+  catch (e) { document.getElementById('reportsTable').innerHTML = '<tr><td colspan="8" class="empty">불러올 수 없습니다</td></tr>'; }
+}
+function renderReports(reports) {
+  const filter = document.getElementById('reportFilter').value;
+  const filtered = filter === 'all' ? reports : reports.filter(r => r.status === filter);
+  if (!filtered.length) { document.getElementById('reportsTable').innerHTML = '<tr><td colspan="8" class="empty">신고가 없습니다</td></tr>'; return; }
+  document.getElementById('reportsTable').innerHTML = filtered.map(r => `<tr>
+    <td>${r.targetType==='post'?'게시글':r.targetType==='comment'?'댓글':'사용자'}</td>
+    <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;">${r.targetId||'-'}</td>
+    <td>${r.reason||'-'}</td><td class="truncate">${r.detail||'-'}</td>
+    <td style="max-width:80px;overflow:hidden;text-overflow:ellipsis;">${r.reporterId||'-'}</td>
+    <td>${formatDate(r.createdAt)}</td>
+    <td><span class="badge-status ${r.status==='pending'?'badge-pending':'badge-resolved'}">${r.status==='pending'?'미처리':'처리완료'}</span></td>
+    <td class="actions">${r.status==='pending'?`<button class="btn btn-sm btn-success" onclick="resolveReport('${r.id}')">처리</button><button class="btn btn-sm btn-danger" onclick="deleteReportedContent('${r.id}','${r.targetType}','${r.targetId}')">삭제+처리</button>`:'<span style="color:#888;font-size:12px;">완료</span>'}</td></tr>`).join('');
+}
+document.getElementById('reportFilter').addEventListener('change', () => renderReports(allReports));
+async function resolveReport(id) { await db.collection('reports').doc(id).update({ status: 'resolved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() }); loadReports(); loadDashboard(); }
+async function deleteReportedContent(id, type, targetId) {
+  if (!confirm('신고된 콘텐츠를 삭제하고 처리하시겠습니까?')) return;
+  if (type === 'post') await db.collection('posts').doc(targetId).delete();
+  await db.collection('reports').doc(id).update({ status: 'resolved', action: 'deleted', resolvedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  loadReports(); loadDashboard();
+}
+
+// ==================== PUSH ====================
+let pushPosts = [], selectedPushPost = null;
+function calcPopularityScore(post) {
+  const likes = post.likes || 0;
+  const comments = post.commentCount || 0;
+  const ts = post.timestamp ? (post.timestamp.toDate ? post.timestamp.toDate().getTime() : new Date(post.timestamp).getTime()) : Date.now();
+  const hoursAgo = (Date.now() - ts) / (1000 * 60 * 60);
+  return (likes + comments * 2) / Math.pow(hoursAgo + 2, 1.5);
+}
+async function loadPushPosts() {
+  try {
+    const snap = await db.collection('posts').orderBy('timestamp', 'desc').limit(100).get();
+    pushPosts = snap.docs.map(doc => { const d = { id: doc.id, ...doc.data() }; d._score = calcPopularityScore(d); return d; });
+    pushPosts.sort((a, b) => b._score - a._score);
+    renderPushPosts(pushPosts); loadPushLogs();
+  } catch (e) { document.getElementById('pushPostsTable').innerHTML = '<tr><td colspan="8" class="empty">불러올 수 없습니다</td></tr>'; }
+}
+function filterPushPosts() {
+  const cat = document.getElementById('pushCategoryFilter').value;
+  const time = document.getElementById('pushTimeFilter').value;
+  let f = [...pushPosts];
+  if (cat !== 'all') f = f.filter(p => p.category === cat);
+  if (time !== 'all') {
+    const now = new Date(); let cutoff;
+    if (time === 'today') cutoff = getDaysAgo(0);
+    else if (time === 'week') cutoff = getDaysAgo(7);
+    else cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+    f = f.filter(p => { const ts = p.timestamp; if (!ts) return false; return (ts.toDate ? ts.toDate() : new Date(ts)) >= cutoff; });
+  }
+  renderPushPosts(f);
+}
+document.getElementById('pushCategoryFilter').addEventListener('change', filterPushPosts);
+document.getElementById('pushTimeFilter').addEventListener('change', filterPushPosts);
+function renderPushPosts(posts) {
+  if (!posts.length) { document.getElementById('pushPostsTable').innerHTML = '<tr><td colspan="9" class="empty">게시글이 없습니다</td></tr>'; return; }
+  document.getElementById('pushPostsTable').innerHTML = posts.map(p => `<tr>
+    <td><input type="radio" name="pushSelect" value="${p.id}" onchange="selectPushPost('${p.id}')"></td>
+    <td class="truncate">${p.title||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':(p.user||'-')}</td>
+    <td><span class="badge-category">${p.category||'-'}</span></td><td><strong>${p.likes||0}</strong></td>
+    <td>${p.commentCount||0}</td><td><strong style="color:#667eea;">${(p._score||0).toFixed(2)}</strong></td><td>${formatDateShort(p.timestamp||p.createdAt)}</td>
+    <td><button class="btn btn-sm btn-warning" onclick="quickPush('${p.id}')">바로 발송</button></td></tr>`).join('');
+}
+function selectPushPost(postId) {
+  selectedPushPost = pushPosts.find(p => p.id === postId); if (!selectedPushPost) return;
+  const title = '🔥 인기글 알림', body = selectedPushPost.title || '';
+  document.getElementById('pushCustomTitle').value = title; document.getElementById('pushCustomBody').value = body;
+  document.getElementById('pushPreviewTitle').textContent = title; document.getElementById('pushPreviewBody').textContent = body;
+  document.getElementById('pushPreviewCard').style.display = 'block';
+  document.getElementById('pushCustomTitle').oninput = () => { document.getElementById('pushPreviewTitle').textContent = document.getElementById('pushCustomTitle').value; };
+  document.getElementById('pushCustomBody').oninput = () => { document.getElementById('pushPreviewBody').textContent = document.getElementById('pushCustomBody').value; };
+}
+function cancelPush() { selectedPushPost = null; document.getElementById('pushPreviewCard').style.display = 'none'; document.querySelectorAll('input[name="pushSelect"]').forEach(r => r.checked = false); }
+function quickPush(postId) { selectedPushPost = pushPosts.find(p => p.id === postId); if (!selectedPushPost) return; document.getElementById('pushCustomTitle').value = '🔥 인기글 알림'; document.getElementById('pushCustomBody').value = selectedPushPost.title || ''; sendPush(); }
+async function sendPush() {
+  if (!selectedPushPost) { alert('게시글을 선택하세요'); return; }
+  const title = document.getElementById('pushCustomTitle').value.trim() || '🔥 인기글 알림';
+  const body = document.getElementById('pushCustomBody').value.trim() || selectedPushPost.title;
+  if (!confirm(`푸시 알림을 전체 사용자에게 발송합니다.\n\n제목: ${title}\n내용: ${body}\n\n발송하시겠습니까?`)) return;
+  const btn = document.getElementById('btnSendPush'); btn.disabled = true; btn.textContent = '발송 중...';
+  try {
+    await db.collection('pushRequests').add({ title, body, postId: selectedPushPost.id, postTitle: selectedPushPost.title || '', topic: 'all', status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp(), sentBy: auth.currentUser.email });
+    await db.collection('pushLogs').add({ title, body, postId: selectedPushPost.id, status: 'sent', createdAt: firebase.firestore.FieldValue.serverTimestamp(), sentBy: auth.currentUser.email });
+    alert('푸시 알림이 발송 요청되었습니다!'); cancelPush(); loadPushLogs();
+  } catch (e) { alert('발송 실패: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '전체 사용자에게 푸시 발송'; }
+}
+async function loadPushLogs() {
+  try {
+    const snap = await db.collection('pushLogs').orderBy('createdAt', 'desc').limit(20).get();
+    if (snap.empty) { document.getElementById('pushLogTable').innerHTML = '<tr><td colspan="4" class="empty">발송 기록이 없습니다</td></tr>'; return; }
+    document.getElementById('pushLogTable').innerHTML = snap.docs.map(doc => { const d = doc.data(); return `<tr><td>${d.title||'-'}</td><td class="truncate">${d.body||'-'}</td><td>${formatDate(d.createdAt)}</td><td><span class="badge-status badge-resolved">발송됨</span></td></tr>`; }).join('');
+  } catch (e) { document.getElementById('pushLogTable').innerHTML = '<tr><td colspan="4" class="empty">기록을 불러올 수 없습니다</td></tr>'; }
+}
+
+// ==================== NOTIFICATIONS ====================
+document.getElementById('btnPostNotice').addEventListener('click', async () => {
+  const title = document.getElementById('notifTitle').value.trim();
+  const content = document.getElementById('notifContent').value.trim();
+  const category = document.getElementById('notifCategory').value;
+  if (!title || !content) { alert('제목과 내용을 입력하세요'); return; }
+  await db.collection('posts').add({ title, text: content, category, user: '관리자', userId: auth.currentUser.uid, avatar: '📢', isAnonymous: false, likes: 0, likedBy: [], savedBy: [], commentCount: 0, images: [], isNotice: true, timestamp: firebase.firestore.FieldValue.serverTimestamp(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  alert('공지가 게시되었습니다'); document.getElementById('notifTitle').value = ''; document.getElementById('notifContent').value = '';
+});
+
+// ==================== BANNERS ====================
+async function loadBanners() {
+  try {
+    const bannerDoc = await db.collection('appConfig').doc('banner').get();
+    if (bannerDoc.exists) {
+      const d = bannerDoc.data();
+      document.getElementById('bannerImageUrl').value = d.imageUrl || '';
+      document.getElementById('bannerLinkUrl').value = d.linkUrl || '';
+      document.getElementById('bannerText').value = d.text || '';
+      document.getElementById('bannerEnabled').checked = d.enabled || false;
+    }
+    const popupDoc = await db.collection('appConfig').doc('popup').get();
+    if (popupDoc.exists) {
+      const d = popupDoc.data();
+      document.getElementById('popupTitle').value = d.title || '';
+      document.getElementById('popupContent').value = d.content || '';
+      document.getElementById('popupImageUrl').value = d.imageUrl || '';
+      document.getElementById('popupEnabled').checked = d.enabled || false;
+      document.getElementById('popupId').value = d.popupId || '';
+    }
+  } catch (e) { console.error('Banner load error:', e); }
+}
+async function saveBanner() {
+  await db.collection('appConfig').doc('banner').set({
+    imageUrl: document.getElementById('bannerImageUrl').value.trim(),
+    linkUrl: document.getElementById('bannerLinkUrl').value.trim(),
+    text: document.getElementById('bannerText').value.trim(),
+    enabled: document.getElementById('bannerEnabled').checked,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }); alert('배너가 저장되었습니다');
+}
+async function savePopup() {
+  await db.collection('appConfig').doc('popup').set({
+    title: document.getElementById('popupTitle').value.trim(),
+    content: document.getElementById('popupContent').value.trim(),
+    imageUrl: document.getElementById('popupImageUrl').value.trim(),
+    enabled: document.getElementById('popupEnabled').checked,
+    popupId: document.getElementById('popupId').value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }); alert('팝업이 저장되었습니다');
+}
+
+// ==================== CATEGORIES ====================
+let categoryData = [];
+async function loadCategories() {
+  try {
+    const doc = await db.collection('appConfig').doc('categories').get();
+    if (doc.exists && doc.data().list) {
+      categoryData = doc.data().list;
+    } else {
+      categoryData = [
+        { id: '1', icon: '💑', name: '부부관계', category: '부부관계', desc: '아내와의 관계, 소통, 갈등 해결' },
+        { id: '2', icon: '📝', name: '자유게시판', category: '자유', desc: '자유롭게 이야기 나눠요' },
+        { id: '3', icon: '🎮', name: '취미게시판', category: '취미', desc: '운동, 게임, 캠핑, 낚시 등' },
+        { id: '4', icon: '👶', name: '육아게시판', category: '육아', desc: '육아 고민, 팁, 경험 공유' },
+        { id: '5', icon: '📢', name: '공지사항', category: '공지', desc: '앱 업데이트 및 안내' },
+      ];
+    }
+    renderCategories();
+  } catch (e) { console.error('Category error:', e); }
+}
+function renderCategories() {
+  document.getElementById('categoryList').innerHTML = categoryData.map((c, i) => `
+    <li class="cat-item" data-index="${i}">
+      <span class="cat-icon">${c.icon}</span>
+      <div class="cat-info"><strong>${c.name}</strong><span>${c.desc}</span></div>
+      <div class="actions">
+        <button class="btn btn-sm" onclick="moveCat(${i},-1)" ${i===0?'disabled':''}>▲</button>
+        <button class="btn btn-sm" onclick="moveCat(${i},1)" ${i===categoryData.length-1?'disabled':''}>▼</button>
+        <button class="btn btn-sm btn-primary" onclick="editCategory(${i})">수정</button>
+        <button class="btn btn-sm btn-danger" onclick="removeCategory(${i})">삭제</button>
+      </div>
+    </li>`).join('');
+}
+function moveCat(index, dir) {
+  const newIdx = index + dir;
+  if (newIdx < 0 || newIdx >= categoryData.length) return;
+  [categoryData[index], categoryData[newIdx]] = [categoryData[newIdx], categoryData[index]];
+  renderCategories();
+}
+function showAddCategory() {
+  showModal(`<h2>카테고리 추가</h2>
+    <div class="modal-field"><label>아이콘 (이모지)</label><input type="text" id="newCatIcon" placeholder="📋"></div>
+    <div class="modal-field"><label>게시판 이름</label><input type="text" id="newCatName" placeholder="새 게시판"></div>
+    <div class="modal-field"><label>카테고리 키</label><input type="text" id="newCatKey" placeholder="영문 또는 한글"></div>
+    <div class="modal-field"><label>설명</label><input type="text" id="newCatDesc" placeholder="게시판 설명"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="addCategory()">추가</button></div>`);
+}
+function addCategory() {
+  const icon = document.getElementById('newCatIcon').value.trim() || '📋';
+  const name = document.getElementById('newCatName').value.trim();
+  const category = document.getElementById('newCatKey').value.trim();
+  const desc = document.getElementById('newCatDesc').value.trim();
+  if (!name || !category) { alert('이름과 카테고리 키를 입력하세요'); return; }
+  categoryData.push({ id: String(Date.now()), icon, name, category, desc });
+  renderCategories(); closeModal();
+}
+function editCategory(idx) {
+  const c = categoryData[idx];
+  showModal(`<h2>카테고리 수정</h2>
+    <div class="modal-field"><label>아이콘</label><input type="text" id="editCatIcon" value="${c.icon}"></div>
+    <div class="modal-field"><label>게시판 이름</label><input type="text" id="editCatName" value="${c.name}"></div>
+    <div class="modal-field"><label>카테고리 키</label><input type="text" id="editCatKey" value="${c.category}"></div>
+    <div class="modal-field"><label>설명</label><input type="text" id="editCatDesc" value="${c.desc}"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">취소</button><button class="btn btn-primary" onclick="saveEditCategory(${idx})">저장</button></div>`);
+}
+function saveEditCategory(idx) {
+  categoryData[idx].icon = document.getElementById('editCatIcon').value.trim();
+  categoryData[idx].name = document.getElementById('editCatName').value.trim();
+  categoryData[idx].category = document.getElementById('editCatKey').value.trim();
+  categoryData[idx].desc = document.getElementById('editCatDesc').value.trim();
+  renderCategories(); closeModal();
+}
+function removeCategory(idx) {
+  if (!confirm(`"${categoryData[idx].name}" 카테고리를 삭제하시겠습니까?`)) return;
+  categoryData.splice(idx, 1); renderCategories();
+}
+async function saveCategories() {
+  await db.collection('appConfig').doc('categories').set({ list: categoryData, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  alert('카테고리가 저장되었습니다');
+}
+
+// ==================== APP VERSION ====================
+async function loadAppVersion() {
+  try {
+    const doc = await db.collection('appConfig').doc('appVersion').get();
+    if (doc.exists) {
+      const d = doc.data();
+      document.getElementById('minVersionAndroid').value = d.minVersionAndroid || '';
+      document.getElementById('minVersionIos').value = d.minVersionIos || '';
+      document.getElementById('latestVersion').value = d.latestVersion || '';
+      document.getElementById('updateMessage').value = d.updateMessage || '';
+      document.getElementById('forceUpdateEnabled').checked = d.forceUpdateEnabled || false;
+      document.getElementById('playStoreUrl').value = d.playStoreUrl || '';
+      document.getElementById('appStoreUrl').value = d.appStoreUrl || '';
+    }
+  } catch (e) { console.error('App version load error:', e); }
+}
+async function saveAppVersion() {
+  await db.collection('appConfig').doc('appVersion').set({
+    minVersionAndroid: document.getElementById('minVersionAndroid').value.trim(),
+    minVersionIos: document.getElementById('minVersionIos').value.trim(),
+    latestVersion: document.getElementById('latestVersion').value.trim(),
+    updateMessage: document.getElementById('updateMessage').value.trim(),
+    forceUpdateEnabled: document.getElementById('forceUpdateEnabled').checked,
+    playStoreUrl: document.getElementById('playStoreUrl').value.trim(),
+    appStoreUrl: document.getElementById('appStoreUrl').value.trim(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const el = document.getElementById('versionSaveStatus');
+  el.textContent = '저장됨!'; setTimeout(() => el.textContent = '', 2000);
+}
+</script>
+</body>
+</html>

@@ -16,10 +16,31 @@ export async function fetchPosts(
   }
 
   if (sortBy === 'popular') {
-    query = query.orderBy('likes', 'desc');
-  } else {
-    query = query.orderBy('timestamp', 'desc');
+    // 인기글: 최근 글을 충분히 가져온 뒤 점수 기반 정렬
+    query = query.orderBy('timestamp', 'desc').limit(100);
+    const snapshot = await query.get();
+    const now = Date.now();
+    const scored = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const likes = data.likes || 0;
+      const comments = data.commentCount || 0;
+      const ts = data.timestamp?.toDate
+        ? data.timestamp.toDate().getTime()
+        : Date.now();
+      const hoursAgo = (now - ts) / (1000 * 60 * 60);
+      const score = (likes + comments * 2) / Math.pow(hoursAgo + 2, 1.5);
+      return {id: doc.id, ...data, _score: score, _doc: doc};
+    });
+    scored.sort((a, b) => b._score - a._score);
+    const sliced = scored.slice(0, limit);
+    return {
+      posts: sliced.map(({_score, _doc, ...rest}) => rest) as Post[],
+      lastDoc: null,
+      hasMore: false,
+    };
   }
+
+  query = query.orderBy('timestamp', 'desc');
 
   if (lastDoc) {
     query = query.startAfter(lastDoc);
