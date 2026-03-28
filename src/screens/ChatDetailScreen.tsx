@@ -20,8 +20,9 @@ import {
   markChatRead,
 } from '../services/chatService';
 import {ChatMessage, getRelativeTime} from '../data/mockData';
+import type {ChatDetailScreenProps} from '../navigation/types';
 
-export default function ChatDetailScreen({route, navigation}: any) {
+export default function ChatDetailScreen({route, navigation}: ChatDetailScreenProps) {
   const {chatRoomId} = route.params;
   const {state, dispatch} = useApp();
   const theme = useTheme();
@@ -38,10 +39,9 @@ export default function ChatDetailScreen({route, navigation}: any) {
   useEffect(() => {
     const unsubscribe = subscribeToMessages(chatRoomId, msgs => {
       const enrichedMsgs: ChatMessage[] = msgs.map(m => {
-        const msgData = m as any;
         const ts =
-          m.timestamp && typeof (m.timestamp as any).toDate === 'function'
-            ? (m.timestamp as any).toDate().getTime()
+          m.timestamp && typeof m.timestamp.toDate === 'function'
+            ? m.timestamp.toDate().getTime()
             : typeof m.timestamp === 'number'
             ? m.timestamp
             : Date.now();
@@ -49,7 +49,7 @@ export default function ChatDetailScreen({route, navigation}: any) {
           ...m,
           time: getRelativeTime(ts),
           timestamp: ts,
-          sender: msgData.senderId === state.uid ? 'me' : 'other',
+          sender: m.senderId === state.uid ? 'me' : 'other',
         } as ChatMessage;
       });
       setMessages(enrichedMsgs);
@@ -175,7 +175,7 @@ export default function ChatDetailScreen({route, navigation}: any) {
             onPress={handleSend}
             disabled={!text.trim() || sending}>
             {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
             ) : (
               <Text style={s.sendText}>전송</Text>
             )}
@@ -208,7 +208,7 @@ const makeStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'flex-end',
       marginBottom: theme.spacing.md,
-      gap: 6,
+      gap: theme.spacing.sm,
     },
     msgRowMe: {
       justifyContent: 'flex-end',
@@ -245,13 +245,13 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.bodySmall,
     },
     bubbleTextMe: {
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
     bubbleTextOther: {
       color: theme.colors.textPrimary,
     },
     msgTime: {
-      fontSize: 10,
+      ...theme.typography.overline,
       color: theme.colors.textTertiary,
     },
     inputBar: {
@@ -274,8 +274,8 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
     },
     sendBtn: {
-      paddingHorizontal: 18,
-      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.pill,
     },
@@ -285,6 +285,6 @@ const makeStyles = (theme: Theme) =>
     sendText: {
       ...theme.typography.bodySmall,
       fontWeight: '700',
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
   });

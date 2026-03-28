@@ -9,16 +9,19 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import PostCard from '../components/PostCard';
 import EmptyState from '../components/EmptyState';
-import {CATEGORIES, TABS, getRelativeTime} from '../data/mockData';
+import {CATEGORIES, TABS, getRelativeTime, Post} from '../data/mockData';
 import * as postService from '../services/postService';
 import * as followService from '../services/followService';
+import type {HomeFeedScreenProps} from '../navigation/types';
+import type {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
 
-export default function HomeFeedScreen({navigation}: any) {
+export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
@@ -26,10 +29,36 @@ export default function HomeFeedScreen({navigation}: any) {
   const [activeCategory, setActiveCategory] = useState('전체');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [lastDoc, setLastDoc] = useState<FirebaseFirestoreTypes.QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
+
+  // Shared enrichment function - converts raw Firestore posts to app format
+  const enrichPosts = useCallback(
+    (posts: Partial<Post>[]) =>
+      posts.map(p => {
+        const ts =
+          p.timestamp && typeof p.timestamp.toDate === 'function'
+            ? p.timestamp.toDate().getTime()
+            : typeof p.timestamp === 'number'
+            ? p.timestamp
+            : Date.now();
+        return {
+          ...p,
+          time: getRelativeTime(ts),
+          timestamp: ts,
+          liked: Array.isArray(p.likedBy)
+            ? p.likedBy.includes(state.uid || '')
+            : false,
+          saved: Array.isArray(p.savedBy)
+            ? p.savedBy.includes(state.uid || '')
+            : false,
+          comments: p.comments || [],
+        };
+      }),
+    [state.uid],
+  );
 
   const loadPosts = useCallback(
     async (reset = false) => {
@@ -43,26 +72,7 @@ export default function HomeFeedScreen({navigation}: any) {
           20,
         );
 
-        const enrichedPosts = result.posts.map(p => {
-          const ts =
-            p.timestamp && typeof (p.timestamp as any).toDate === 'function'
-              ? (p.timestamp as any).toDate().getTime()
-              : typeof p.timestamp === 'number'
-              ? p.timestamp
-              : Date.now();
-          return {
-            ...p,
-            time: getRelativeTime(ts),
-            timestamp: ts,
-            liked: Array.isArray((p as any).likedBy)
-              ? (p as any).likedBy.includes(state.uid || '')
-              : false,
-            saved: Array.isArray((p as any).savedBy)
-              ? (p as any).savedBy.includes(state.uid || '')
-              : false,
-            comments: p.comments || [],
-          };
-        });
+        const enrichedPosts = enrichPosts(result.posts);
 
         if (reset) {
           dispatch({type: 'SET_POSTS', posts: enrichedPosts});
@@ -78,7 +88,7 @@ export default function HomeFeedScreen({navigation}: any) {
         console.error('Failed to fetch posts:', error);
       }
     },
-    [activeTab, activeCategory, lastDoc, state.uid, state.posts, dispatch],
+    [activeTab, activeCategory, lastDoc, state.uid, state.posts, dispatch, enrichPosts],
   );
 
   // Fetch following user IDs when "팔로잉" tab is active
@@ -104,28 +114,7 @@ export default function HomeFeedScreen({navigation}: any) {
           20,
         );
 
-        const enrichedPosts = result.posts.map(p => {
-          const ts =
-            p.timestamp && typeof (p.timestamp as any).toDate === 'function'
-              ? (p.timestamp as any).toDate().getTime()
-              : typeof p.timestamp === 'number'
-              ? p.timestamp
-              : Date.now();
-          return {
-            ...p,
-            time: getRelativeTime(ts),
-            timestamp: ts,
-            liked: Array.isArray((p as any).likedBy)
-              ? (p as any).likedBy.includes(state.uid || '')
-              : false,
-            saved: Array.isArray((p as any).savedBy)
-              ? (p as any).savedBy.includes(state.uid || '')
-              : false,
-            comments: p.comments || [],
-          };
-        });
-
-        dispatch({type: 'SET_POSTS', posts: enrichedPosts});
+        dispatch({type: 'SET_POSTS', posts: enrichPosts(result.posts)});
         setLastDoc(result.lastDoc);
         setHasMore(result.hasMore);
       } catch (error) {
@@ -135,12 +124,12 @@ export default function HomeFeedScreen({navigation}: any) {
       }
     };
     load();
-  }, [activeTab, activeCategory, dispatch, state.uid]);
+  }, [activeTab, activeCategory, dispatch, state.uid, enrichPosts]);
 
   const filteredPosts = state.posts.filter(p => {
     if (state.blockedUsers.includes(p.user)) return false;
     if (activeTab === '팔로잉') {
-      const authorId = (p as any).userId;
+      const authorId = p.userId;
       if (!authorId || !followingIds.includes(authorId)) return false;
     }
     return true;
@@ -160,28 +149,7 @@ export default function HomeFeedScreen({navigation}: any) {
         20,
       );
 
-      const enrichedPosts = result.posts.map(p => {
-        const ts =
-          p.timestamp && typeof (p.timestamp as any).toDate === 'function'
-            ? (p.timestamp as any).toDate().getTime()
-            : typeof p.timestamp === 'number'
-            ? p.timestamp
-            : Date.now();
-        return {
-          ...p,
-          time: getRelativeTime(ts),
-          timestamp: ts,
-          liked: Array.isArray((p as any).likedBy)
-            ? (p as any).likedBy.includes(state.uid || '')
-            : false,
-          saved: Array.isArray((p as any).savedBy)
-            ? (p as any).savedBy.includes(state.uid || '')
-            : false,
-          comments: p.comments || [],
-        };
-      });
-
-      dispatch({type: 'SET_POSTS', posts: enrichedPosts});
+      dispatch({type: 'SET_POSTS', posts: enrichPosts(result.posts)});
       setLastDoc(result.lastDoc);
       setHasMore(result.hasMore);
     } catch (error) {
@@ -189,7 +157,7 @@ export default function HomeFeedScreen({navigation}: any) {
     } finally {
       setRefreshing(false);
     }
-  }, [activeTab, activeCategory, dispatch, state.uid]);
+  }, [activeTab, activeCategory, dispatch, enrichPosts]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || activeTab === '인기') return;
@@ -203,30 +171,9 @@ export default function HomeFeedScreen({navigation}: any) {
         20,
       );
 
-      const enrichedPosts = result.posts.map(p => {
-        const ts =
-          p.timestamp && typeof (p.timestamp as any).toDate === 'function'
-            ? (p.timestamp as any).toDate().getTime()
-            : typeof p.timestamp === 'number'
-            ? p.timestamp
-            : Date.now();
-        return {
-          ...p,
-          time: getRelativeTime(ts),
-          timestamp: ts,
-          liked: Array.isArray((p as any).likedBy)
-            ? (p as any).likedBy.includes(state.uid || '')
-            : false,
-          saved: Array.isArray((p as any).savedBy)
-            ? (p as any).savedBy.includes(state.uid || '')
-            : false,
-          comments: p.comments || [],
-        };
-      });
-
       dispatch({
         type: 'SET_POSTS',
-        posts: [...state.posts, ...enrichedPosts],
+        posts: [...state.posts, ...enrichPosts(result.posts)],
       });
       setLastDoc(result.lastDoc);
       setHasMore(result.hasMore);
@@ -235,7 +182,7 @@ export default function HomeFeedScreen({navigation}: any) {
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, activeTab, activeCategory, lastDoc, state.uid, state.posts, dispatch]);
+  }, [hasMore, loadingMore, activeTab, activeCategory, lastDoc, state.posts, dispatch, enrichPosts]);
 
   const handleToggleLike = useCallback(
     async (postId: string) => {
@@ -272,9 +219,9 @@ export default function HomeFeedScreen({navigation}: any) {
       <SafeAreaView style={s.container}>
         <Header
           title="아빠의 다락방"
-          rightIcon2={unreadNotifs > 0 ? '🔔' : '🔔'}
+          rightIcon2="notifications-outline"
           onRightPress2={() => navigation.navigate('Notifications')}
-          rightIcon="🔍"
+          rightIcon="search-outline"
           onRightPress={() => navigation.navigate('Search')}
         />
         <View style={s.loadingContainer}>
@@ -288,9 +235,9 @@ export default function HomeFeedScreen({navigation}: any) {
     <SafeAreaView style={s.container}>
       <Header
         title="아빠의 다락방"
-        rightIcon2={unreadNotifs > 0 ? '🔔' : '🔔'}
+        rightIcon2="notifications-outline"
         onRightPress2={() => navigation.navigate('Notifications')}
-        rightIcon="🔍"
+        rightIcon="search-outline"
         onRightPress={() => navigation.navigate('Search')}
       />
 
@@ -342,7 +289,7 @@ export default function HomeFeedScreen({navigation}: any) {
       {/* Feed */}
       {filteredPosts.length === 0 ? (
         <EmptyState
-          icon="📭"
+          icon="mail-open-outline"
           title="게시글이 없습니다"
           subtitle="첫 번째 글을 작성해보세요!"
         />
@@ -384,7 +331,7 @@ export default function HomeFeedScreen({navigation}: any) {
         style={s.fab}
         onPress={() => navigation.navigate('WritePost')}
         activeOpacity={0.85}>
-        <Text style={s.fabText}>+</Text>
+        <Icon name="add" size={24} color={theme.colors.onPrimary} />
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -450,7 +397,7 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
     },
     catTextActive: {
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
     feedContent: {
       paddingVertical: theme.spacing.sm,
@@ -461,20 +408,14 @@ const makeStyles = (theme: Theme) =>
     },
     fab: {
       position: 'absolute',
-      bottom: theme.spacing.xl,
+      bottom: 28,
       right: theme.spacing.lg,
       width: 56,
       height: 56,
-      borderRadius: 28,
+      borderRadius: theme.radius.lg,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
       ...theme.shadows.level4,
-    },
-    fabText: {
-      fontSize: 28,
-      color: '#fff',
-      fontWeight: '300',
-      marginTop: -2,
     },
   });

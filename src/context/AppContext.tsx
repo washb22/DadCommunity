@@ -5,7 +5,7 @@ import React, {
   useEffect,
   ReactNode,
 } from 'react';
-import auth from '@react-native-firebase/auth';
+import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
 import {
   Post,
   Comment,
@@ -38,7 +38,7 @@ export interface AppState {
   isFirebaseReady: boolean;
 }
 
-type Action =
+export type Action =
   | {type: 'LOGIN'; uid?: string}
   | {type: 'LOGOUT'}
   | {type: 'SET_USER'; user: UserProfile; uid: string}
@@ -56,7 +56,6 @@ type Action =
   | {type: 'ADD_COMMENT'; postId: string; comment: Comment}
   | {type: 'ADD_REPLY'; postId: string; commentId: string; reply: Comment}
   | {type: 'TOGGLE_COMMENT_LIKE'; postId: string; commentId: string}
-  | {type: 'SEND_MESSAGE'; chatRoomId: string; text: string}
   | {type: 'MARK_CHAT_READ'; chatRoomId: string}
   | {type: 'UPDATE_PROFILE'; updates: Partial<UserProfile>}
   | {type: 'MARK_NOTIFICATION_READ'; notificationId: string}
@@ -220,11 +219,6 @@ function appReducer(state: AppState, action: Action): AppState {
       return {...state, posts};
     }
 
-    case 'SEND_MESSAGE': {
-      // Local optimistic update is no longer needed since we use Firebase realtime
-      return state;
-    }
-
     case 'MARK_CHAT_READ': {
       const chatRooms = state.chatRooms.map(cr => {
         if (cr.id === action.chatRoomId) {
@@ -275,7 +269,7 @@ export function AppProvider({children}: {children: ReactNode}) {
 
   // Listen for Firebase Auth state changes
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async firebaseUser => {
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser: FirebaseAuthTypes.User | null) => {
       if (firebaseUser) {
         try {
           const profile = await getUserProfile(firebaseUser.uid);

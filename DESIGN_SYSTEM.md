@@ -330,11 +330,75 @@ paddingH: 8px, paddingV: 3px
 borderRadius: 8px
 ```
 
+#### 자녀 나이대 배지 (AgeBadge)
+```
+라이트 모드:
+  backgroundColor: #F0C9A8 (accentLight)
+  textColor: #C4754B (accent)
+  fontSize: 11px, fontWeight: 600
+  paddingH: 8px, paddingV: 3px
+  borderRadius: 8px
+
+다크 모드:
+  backgroundColor: rgba(212, 145, 94, 0.2)
+  textColor: #D4915E (dark accent)
+```
+
+**표시 텍스트**: "유아 아빠", "초등 아빠", "임신중" 등
+**표시 위치**:
+- 프로필 카드: 닉네임 우측 (userName과 같은 row)
+- PostCard 헤더: 닉네임 우측 (익명 뱃지와 동일 위치)
+- PostDetail 작성자 영역: 동일 위치
+
+**규칙**: 익명 게시글에서는 나이대 배지 숨김. v2에서 "익명의 유아 아빠" 옵션 검토 예정.
+
+#### 관심사 태그 (InterestChip)
+```
+라이트 모드:
+  backgroundColor: #F0EDE8 (surfaceElevated)
+  textColor: #6B6B6B (textSecondary)
+  fontSize: 12px (captionSmall), fontWeight: 500
+  paddingH: 10px, paddingV: 5px
+  borderRadius: 999px (pill)
+
+다크 모드:
+  backgroundColor: #2E2E34 (dark surfaceElevated)
+  textColor: #9A9A9A (dark textSecondary)
+```
+
+**표시 위치**: 프로필 카드 내부, "프로필 수정" 버튼과 통계 영역 사이
+**레이아웃**: 수평 flexWrap, gap: 6px, maxLines: 2 (넘치면 +N 표시)
+
+```
+[프로필 상단 - 아바타 + 닉네임 + 나이대 배지]
+[자기소개]
+[프로필 수정 버튼]
+[관심사 칩들: 육아 | 캠핑 | 재테크 | ...]
+────────────────────────────────
+[게시글 N | 받은 좋아요 N | 저장 N]
+```
+
 ### 4.8 스위치/토글
 ```
 trackColor (off): #D4C9B8
 trackColor (on): #3D5A80
 thumbColor: #FFFFFF
+```
+
+### 4.8.1 다크 모드 전환 (프로필 > 설정)
+```
+위치: ProfileScreen 설정 섹션
+아이콘: moon-outline (Ionicons)
+라벨: "다크 모드"
+우측: Switch (4.8 스타일)
+
+설명 텍스트 (caption, textTertiary):
+  OFF 상태: "시스템 설정을 따릅니다"
+  ON 상태: "항상 다크 모드를 사용합니다"
+
+동작:
+  OFF: useColorScheme() 시스템 감지 (기본값)
+  ON: 강제 다크 모드 적용
 ```
 
 ### 4.9 FAB (글쓰기 버튼)

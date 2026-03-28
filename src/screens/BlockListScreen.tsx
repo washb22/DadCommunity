@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -7,26 +7,69 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import EmptyState from '../components/EmptyState';
+import * as reportService from '../services/reportService';
+import type {BlockListScreenProps} from '../navigation/types';
 
-export default function BlockListScreen({navigation}: any) {
+export default function BlockListScreen({navigation}: BlockListScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
+  const [loading, setLoading] = useState(true);
+
+  // Load blocked users from Firestore on mount
+  useEffect(() => {
+    if (!state.uid) {
+      setLoading(false);
+      return;
+    }
+    reportService
+      .getBlockedUsers(state.uid)
+      .then(blockedIds => {
+        dispatch({type: 'SET_BLOCKED_USERS', blockedUsers: blockedIds});
+      })
+      .catch(error => {
+        console.error('Failed to fetch blocked users:', error);
+      })
+      .finally(() => setLoading(false));
+  }, [state.uid, dispatch]);
 
   const handleUnblock = (userId: string) => {
-    Alert.alert('차단 해제', `${userId}님의 차단을 해제하시겠습니까?`, [
+    Alert.alert('차단 해제', `이 사용자의 차단을 해제하시겠습니까?`, [
       {text: '취소', style: 'cancel'},
       {
         text: '해제',
-        onPress: () => dispatch({type: 'UNBLOCK_USER', userId}),
+        onPress: async () => {
+          if (!state.uid) return;
+          dispatch({type: 'UNBLOCK_USER', userId});
+          try {
+            await reportService.unblockUser(state.uid, userId);
+          } catch (error) {
+            // Revert on failure
+            dispatch({type: 'BLOCK_USER', userId});
+            console.error('Failed to unblock user:', error);
+            Alert.alert('오류', '차단 해제에 실패했습니다. 다시 시도해주세요.');
+          }
+        },
       },
     ]);
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={s.container}>
+        <Header title="차단 관리" showBack onBack={() => navigation.goBack()} />
+        <View style={s.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={s.container}>
@@ -38,7 +81,7 @@ export default function BlockListScreen({navigation}: any) {
 
       {state.blockedUsers.length === 0 ? (
         <EmptyState
-          icon="🚫"
+          icon="ban-outline"
           title="차단한 사용자가 없습니다"
           subtitle="차단한 사용자는 여기에 표시됩니다"
         />
@@ -73,6 +116,11 @@ const makeStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     item: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -106,7 +154,7 @@ const makeStyles = (theme: Theme) =>
     },
     unblockBtn: {
       paddingHorizontal: theme.spacing.md,
-      paddingVertical: 7,
+      paddingVertical: theme.spacing.sm,
       backgroundColor: theme.colors.surfaceElevated,
       borderRadius: theme.radius.sm,
     },

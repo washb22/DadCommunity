@@ -11,9 +11,12 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import * as postService from '../services/postService';
+import type {WritePostScreenProps} from '../navigation/types';
 
 const BOARD_OPTIONS = [
   {label: '부부관계', category: '부부관계'},
@@ -26,9 +29,10 @@ const BOARD_OPTIONS = [
   {label: '요리/집안일', category: '요리/집안일'},
 ];
 
-export default function WritePostScreen({navigation, route}: any) {
+export default function WritePostScreen({navigation, route}: WritePostScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const s = makeStyles(theme);
 
   // Edit mode
@@ -102,6 +106,7 @@ export default function WritePostScreen({navigation, route}: any) {
           text: content.trim(),
           isAnonymous,
           images: imageUrls,
+          authorAgeGroup: isAnonymous ? undefined : state.user.childAgeGroup,
         });
 
         dispatch({
@@ -120,6 +125,7 @@ export default function WritePostScreen({navigation, route}: any) {
             comments: [],
             saved: false,
             liked: false,
+            authorAgeGroup: isAnonymous ? undefined : state.user.childAgeGroup,
           },
         });
 
@@ -181,7 +187,7 @@ export default function WritePostScreen({navigation, route}: any) {
   return (
     <SafeAreaView style={s.container}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, {paddingTop: insets.top}]}>
         <TouchableOpacity onPress={handleCancel} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
           <Text style={s.cancelText}>취소</Text>
         </TouchableOpacity>
@@ -215,9 +221,10 @@ export default function WritePostScreen({navigation, route}: any) {
               s.boardSelectorText,
               selectedBoard && s.boardSelectorTextSelected,
             ]}>
-            📋 {selectedBoard ? selectedBoard.label : '게시판 선택'}
+            <Icon name="clipboard-outline" size={16} color={selectedBoard ? theme.colors.textPrimary : theme.colors.textSecondary} />{' '}
+            {selectedBoard ? selectedBoard.label : '게시판 선택'}
           </Text>
-          <Text style={s.boardArrow}>{showBoardPicker ? '▲' : '▼'}</Text>
+          <Icon name={showBoardPicker ? 'chevron-up' : 'chevron-down'} size={16} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
         {showBoardPicker && (
@@ -281,7 +288,7 @@ export default function WritePostScreen({navigation, route}: any) {
                 <TouchableOpacity
                   style={s.imageRemoveBtn}
                   onPress={() => setImages(prev => prev.filter((_, i) => i !== idx))}>
-                  <Text style={s.imageRemoveText}>✕</Text>
+                  <Icon name="close" size={12} color={theme.colors.onPrimary} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -294,13 +301,13 @@ export default function WritePostScreen({navigation, route}: any) {
             style={s.attachBtn}
             activeOpacity={0.7}
             onPress={handleImageAttach}>
-            <Text style={s.attachText}>📷 사진</Text>
+            <View style={s.attachContent}><Icon name="camera-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 사진</Text></View>
           </TouchableOpacity>
           <TouchableOpacity style={s.attachBtn} activeOpacity={0.7}>
-            <Text style={s.attachText}>🎥 영상</Text>
+            <View style={s.attachContent}><Icon name="videocam-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 영상</Text></View>
           </TouchableOpacity>
           <TouchableOpacity style={s.attachBtn} activeOpacity={0.7}>
-            <Text style={s.attachText}>📊 투표</Text>
+            <View style={s.attachContent}><Icon name="bar-chart-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 투표</Text></View>
           </TouchableOpacity>
         </View>
 
@@ -310,7 +317,7 @@ export default function WritePostScreen({navigation, route}: any) {
             value={isAnonymous}
             onValueChange={setIsAnonymous}
             trackColor={{false: theme.colors.border, true: theme.colors.primary}}
-            thumbColor="#fff"
+            thumbColor={theme.colors.onPrimary}
           />
           <Text style={s.anonText}>익명으로 작성</Text>
           <Text style={s.anonDesc}>닉네임이 '익명의 아빠'로 표시됩니다</Text>
@@ -373,10 +380,6 @@ const makeStyles = (theme: Theme) =>
     boardSelectorTextSelected: {
       color: theme.colors.textPrimary,
     },
-    boardArrow: {
-      ...theme.typography.overline,
-      color: theme.colors.textSecondary,
-    },
     boardPicker: {
       backgroundColor: theme.colors.surfaceElevated,
       borderRadius: theme.radius.md,
@@ -434,6 +437,10 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderRadius: theme.radius.sm,
     },
+    attachContent: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+    },
     attachText: {
       ...theme.typography.caption,
       color: theme.colors.textSecondary,
@@ -481,10 +488,5 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.colors.error,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    imageRemoveText: {
-      fontSize: 10,
-      color: '#fff',
-      fontWeight: '700',
     },
   });

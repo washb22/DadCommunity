@@ -1,12 +1,42 @@
 import firestore, {FirebaseFirestoreTypes} from '@react-native-firebase/firestore';
-import {Post, Comment, Reply} from '../data/mockData';
+import {Post, Comment, Reply, getRelativeTime} from '../data/mockData';
 
 const postsRef = firestore().collection('posts');
+
+/**
+ * Firestore에서 가져온 Post 배열에 유저별 liked/saved 상태와 상대시간을 부여.
+ * HomeFeedScreen 등에서 중복되던 enrich 로직을 한 곳으로 통합.
+ */
+export function enrichPostsWithUserData(
+  posts: Partial<Post>[],
+  currentUid: string | null,
+): Post[] {
+  return posts.map(p => {
+    const ts =
+      p.timestamp && typeof p.timestamp.toDate === 'function'
+        ? p.timestamp.toDate().getTime()
+        : typeof p.timestamp === 'number'
+        ? p.timestamp
+        : Date.now();
+    return {
+      ...p,
+      time: getRelativeTime(ts),
+      timestamp: ts,
+      liked: Array.isArray(p.likedBy)
+        ? p.likedBy.includes(currentUid || '')
+        : false,
+      saved: Array.isArray(p.savedBy)
+        ? p.savedBy.includes(currentUid || '')
+        : false,
+      comments: p.comments || [],
+    };
+  });
+}
 
 export async function fetchPosts(
   category?: string,
   sortBy: 'latest' | 'popular' = 'latest',
-  lastDoc?: any,
+  lastDoc?: FirebaseFirestoreTypes.QueryDocumentSnapshot | null,
   limit = 20,
 ) {
   let query = postsRef as FirebaseFirestoreTypes.Query;
@@ -24,12 +54,13 @@ export async function fetchPosts(
       const data = doc.data();
       const likes = data.likes || 0;
       const comments = data.commentCount || 0;
+      const saves = Array.isArray(data.savedBy) ? data.savedBy.length : 0;
       const ts = data.timestamp?.toDate
         ? data.timestamp.toDate().getTime()
         : 0;
       if (!ts) return {id: doc.id, ...data, _score: 0, _doc: doc};
       const hoursAgo = Math.max(0, (now - ts) / (1000 * 60 * 60));
-      const score = (likes + comments * 2) / Math.pow(hoursAgo + 2, 1.5);
+      const score = (likes + comments * 2 + saves) / Math.pow(hoursAgo + 2, 1.5);
       return {id: doc.id, ...data, _score: score, _doc: doc};
     });
     scored.sort((a, b) => b._score - a._score);
@@ -161,25 +192,26 @@ export async function fetchComments(postId: string): Promise<Comment[]> {
     .orderBy('timestamp', 'asc')
     .get();
 
-  const comments: Comment[] = [];
-  for (const doc of snapshot.docs) {
-    const data = doc.data();
-    // Fetch replies subcollection
-    const repliesSnap = await doc.ref
-      .collection('replies')
-      .orderBy('timestamp', 'asc')
-      .get();
-    const replies: Reply[] = repliesSnap.docs.map(r => ({
-      id: r.id,
-      ...r.data(),
-    })) as Reply[];
+  // Fetch all replies subcollections in parallel instead of sequentially (N+1 fix)
+  const comments = await Promise.all(
+    snapshot.docs.map(async doc => {
+      const data = doc.data();
+      const repliesSnap = await doc.ref
+        .collection('replies')
+        .orderBy('timestamp', 'asc')
+        .get();
+      const replies: Reply[] = repliesSnap.docs.map(r => ({
+        id: r.id,
+        ...r.data(),
+      })) as Reply[];
 
-    comments.push({
-      id: doc.id,
-      ...data,
-      replies,
-    } as Comment);
-  }
+      return {
+        id: doc.id,
+        ...data,
+        replies,
+      } as Comment;
+    }),
+  );
 
   return comments;
 }

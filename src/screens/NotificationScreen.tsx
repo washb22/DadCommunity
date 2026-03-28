@@ -8,20 +8,22 @@ import {
   SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp, Notification} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import EmptyState from '../components/EmptyState';
 import firestore from '@react-native-firebase/firestore';
 import {getRelativeTime} from '../data/mockData';
+import type {NotificationScreenProps} from '../navigation/types';
 
 const ICON_MAP: Record<string, string> = {
-  like: '♥',
-  comment: '💬',
-  chat: '✉️',
+  like: 'heart',
+  comment: 'chatbubble-outline',
+  chat: 'mail-outline',
 };
 
-export default function NotificationScreen({navigation}: any) {
+export default function NotificationScreen({navigation}: NotificationScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
@@ -105,7 +107,7 @@ export default function NotificationScreen({navigation}: any) {
 
       {state.notifications.length === 0 ? (
         <EmptyState
-          icon="🔔"
+          icon="notifications-outline"
           title="알림이 없습니다"
           subtitle="새로운 소식이 있으면 알려드릴게요"
         />
@@ -122,9 +124,11 @@ export default function NotificationScreen({navigation}: any) {
               onPress={() => handleNotificationPress(item)}
               activeOpacity={0.7}>
               <View style={s.notifIcon}>
-                <Text style={s.notifIconText}>
-                  {ICON_MAP[item.type] || '🔔'}
-                </Text>
+                <Icon
+                  name={ICON_MAP[item.type] || 'notifications-outline'}
+                  size={20}
+                  color={theme.colors.textSecondary}
+                />
               </View>
               <View style={s.notifContent}>
                 <Text style={s.notifMessage}>{item.message}</Text>
@@ -170,9 +174,6 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: theme.spacing.md,
-    },
-    notifIconText: {
-      fontSize: 18,
     },
     notifContent: {
       flex: 1,

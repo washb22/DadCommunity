@@ -14,8 +14,9 @@ import Header from '../components/Header';
 import EmptyState from '../components/EmptyState';
 import {subscribeToChatRooms} from '../services/chatService';
 import {getRelativeTime} from '../data/mockData';
+import type {ChatListScreenProps} from '../navigation/types';
 
-export default function ChatListScreen({navigation}: any) {
+export default function ChatListScreen({navigation}: ChatListScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
@@ -30,24 +31,21 @@ export default function ChatListScreen({navigation}: any) {
 
     const unsubscribe = subscribeToChatRooms(state.uid, rooms => {
       const enrichedRooms = rooms.map(room => {
-        const roomData = room as any;
-        const otherMemberInfo = roomData.memberInfo
-          ? Object.entries(roomData.memberInfo).find(
+        const otherMemberInfo = room.memberInfo
+          ? Object.entries(room.memberInfo).find(
               ([key]) => key !== state.uid,
             )
           : null;
-        const otherInfo = otherMemberInfo
-          ? (otherMemberInfo[1] as any)
-          : null;
+        const otherInfo = otherMemberInfo ? otherMemberInfo[1] : null;
 
         return {
           ...room,
-          user: otherInfo?.name || room.user || '알 수 없음',
+          user: otherInfo?.nickname || room.user || '알 수 없음',
           avatar: otherInfo?.avatar || room.avatar || '🧔',
           messages: room.messages || [],
           unread:
-            roomData.unreadCount && roomData.unreadCount[state.uid!]
-              ? roomData.unreadCount[state.uid!]
+            room.unreadCount && room.unreadCount[state.uid!]
+              ? room.unreadCount[state.uid!]
               : 0,
         };
       });
@@ -78,7 +76,7 @@ export default function ChatListScreen({navigation}: any) {
 
       {chatRooms.length === 0 ? (
         <EmptyState
-          icon="💬"
+          icon="chatbubble-outline"
           title="아직 채팅이 없습니다"
           subtitle="게시글에서 다른 아빠에게 메시지를 보내보세요"
         />
@@ -87,9 +85,8 @@ export default function ChatListScreen({navigation}: any) {
           data={chatRooms}
           keyExtractor={item => item.id}
           renderItem={({item}) => {
-            const roomData = item as any;
-            const lastMessage = roomData.lastMessage || '';
-            const lastMessageAt = roomData.lastMessageAt;
+            const lastMessage = item.lastMessage || '';
+            const lastMessageAt = item.lastMessageAt;
             const lastTime = lastMessageAt
               ? typeof lastMessageAt.toDate === 'function'
                 ? getRelativeTime(lastMessageAt.toDate().getTime())
@@ -169,7 +166,7 @@ const makeStyles = (theme: Theme) =>
     chatTop: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: 5,
+      marginBottom: theme.spacing.xs,
     },
     chatUser: {
       ...theme.typography.body,
@@ -191,18 +188,18 @@ const makeStyles = (theme: Theme) =>
       flex: 1,
     },
     unreadBadge: {
-      backgroundColor: theme.colors.error,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
+      backgroundColor: theme.colors.accent,
+      borderRadius: 9,
+      minWidth: 18,
+      height: 18,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 6,
+      paddingHorizontal: theme.spacing.sm,
       marginLeft: theme.spacing.sm,
     },
     unreadText: {
       ...theme.typography.overline,
       fontWeight: '700',
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
   });

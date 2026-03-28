@@ -12,16 +12,22 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Image,
+  Dimensions,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
+import AgeBadge from '../components/AgeBadge';
 import * as postService from '../services/postService';
 import * as followService from '../services/followService';
 import {getRelativeTime} from '../data/mockData';
 import {Comment} from '../data/mockData';
+import * as reportService from '../services/reportService';
+import type {PostDetailScreenProps} from '../navigation/types';
 
-export default function PostDetailScreen({route, navigation}: any) {
+export default function PostDetailScreen({route, navigation}: PostDetailScreenProps) {
   const {postId} = route.params;
   const {state, dispatch} = useApp();
   const theme = useTheme();
@@ -39,14 +45,14 @@ export default function PostDetailScreen({route, navigation}: any) {
   // Check follow status on mount
   useEffect(() => {
     if (!state.uid || !post) return;
-    const authorId = (post as any).userId;
+    const authorId = post.userId;
     if (!authorId || authorId === state.uid) return;
     followService.isFollowing(state.uid, authorId).then(setIsFollowingAuthor).catch(() => {});
   }, [state.uid, post]);
 
   const handleToggleFollow = async () => {
     if (!state.uid || !post) return;
-    const authorId = (post as any).userId;
+    const authorId = post.userId;
     if (!authorId || authorId === state.uid) return;
 
     setFollowLoading(true);
@@ -84,8 +90,8 @@ export default function PostDetailScreen({route, navigation}: any) {
       const comments = await postService.fetchComments(postId);
       const enrichedComments: Comment[] = comments.map(c => {
         const ts =
-          c.timestamp && typeof (c.timestamp as any).toDate === 'function'
-            ? (c.timestamp as any).toDate().getTime()
+          c.timestamp && typeof c.timestamp.toDate === 'function'
+            ? c.timestamp.toDate().getTime()
             : typeof c.timestamp === 'number'
             ? c.timestamp
             : Date.now();
@@ -93,13 +99,13 @@ export default function PostDetailScreen({route, navigation}: any) {
           ...c,
           time: getRelativeTime(ts),
           timestamp: ts,
-          liked: Array.isArray((c as any).likedBy)
-            ? (c as any).likedBy.includes(state.uid || '')
+          liked: Array.isArray(c.likedBy)
+            ? c.likedBy.includes(state.uid || '')
             : false,
           replies: (c.replies || []).map(r => {
             const rts =
-              r.timestamp && typeof (r.timestamp as any).toDate === 'function'
-                ? (r.timestamp as any).toDate().getTime()
+              r.timestamp && typeof r.timestamp.toDate === 'function'
+                ? r.timestamp.toDate().getTime()
                 : typeof r.timestamp === 'number'
                 ? r.timestamp
                 : Date.now();
@@ -107,8 +113,8 @@ export default function PostDetailScreen({route, navigation}: any) {
               ...r,
               time: getRelativeTime(rts),
               timestamp: rts,
-              liked: Array.isArray((r as any).likedBy)
-                ? (r as any).likedBy.includes(state.uid || '')
+              liked: Array.isArray(r.likedBy)
+                ? r.likedBy.includes(state.uid || '')
                 : false,
             };
           }),
@@ -198,7 +204,7 @@ export default function PostDetailScreen({route, navigation}: any) {
     }
   };
 
-  const isMyPost = post.user === state.user.nickname || (post as any).userId === state.uid;
+  const isMyPost = post.user === state.user.nickname || post.userId === state.uid;
 
   const handleEdit = () => {
     navigation.navigate('WritePost', {
@@ -242,8 +248,23 @@ export default function PostDetailScreen({route, navigation}: any) {
     Alert.alert('신고 사유 선택', '', [
       ...REPORT_REASONS.map(reason => ({
         text: reason,
-        onPress: () => {
-          Alert.alert('신고 완료', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+        onPress: async () => {
+          if (!state.uid) {
+            Alert.alert('알림', '로그인이 필요합니다.');
+            return;
+          }
+          try {
+            await reportService.reportContent({
+              reporterId: state.uid,
+              targetType: 'post',
+              targetId: post.id,
+              reason: reason as reportService.ReportReason,
+            });
+            Alert.alert('신고 완료', '신고가 접수되었습니다. 검토 후 조치하겠습니다.');
+          } catch (error) {
+            console.error('Failed to report:', error);
+            Alert.alert('오류', '신고에 실패했습니다. 다시 시도해주세요.');
+          }
         },
       })),
       {text: '취소', style: 'cancel' as const},
@@ -251,6 +272,7 @@ export default function PostDetailScreen({route, navigation}: any) {
   };
 
   const handleBlockUser = () => {
+    const authorId = post.userId;
     Alert.alert(
       '사용자 차단',
       `${post.user}님을 차단하시겠습니까?\n차단된 사용자의 글은 더 이상 보이지 않습니다.`,
@@ -259,10 +281,20 @@ export default function PostDetailScreen({route, navigation}: any) {
         {
           text: '차단',
           style: 'destructive',
-          onPress: () => {
-            dispatch({type: 'BLOCK_USER', userId: post.user});
-            Alert.alert('차단 완료', `${post.user}님을 차단했습니다.`);
-            navigation.goBack();
+          onPress: async () => {
+            if (!state.uid || !authorId) {
+              Alert.alert('오류', '차단할 수 없습니다.');
+              return;
+            }
+            try {
+              await reportService.blockUser(state.uid, authorId);
+              dispatch({type: 'BLOCK_USER', userId: authorId});
+              Alert.alert('차단 완료', `${post.user}님을 차단했습니다.`);
+              navigation.goBack();
+            } catch (error) {
+              console.error('Failed to block user:', error);
+              Alert.alert('오류', '차단에 실패했습니다. 다시 시도해주세요.');
+            }
           },
         },
       ],
@@ -292,7 +324,7 @@ export default function PostDetailScreen({route, navigation}: any) {
         title={post.category}
         showBack
         onBack={() => navigation.goBack()}
-        rightIcon="⋯"
+        rightIcon="ellipsis-horizontal"
         onRightPress={handleMore}
       />
 
@@ -312,15 +344,17 @@ export default function PostDetailScreen({route, navigation}: any) {
                   <Text style={s.postUser}>{post.user}</Text>
                   <Text style={s.postTime}>{post.time}</Text>
                 </View>
-                {post.isAnonymous && (
+                {post.isAnonymous ? (
                   <View style={s.anonBadge}>
                     <Text style={s.anonBadgeText}>익명</Text>
                   </View>
-                )}
+                ) : post.authorAgeGroup ? (
+                  <AgeBadge ageGroup={post.authorAgeGroup} />
+                ) : null}
                 {!post.isAnonymous &&
                   state.uid &&
-                  (post as any).userId &&
-                  (post as any).userId !== state.uid && (
+                  post.userId &&
+                  post.userId !== state.uid && (
                     <TouchableOpacity
                       style={[
                         s.followBtn,
@@ -348,38 +382,53 @@ export default function PostDetailScreen({route, navigation}: any) {
               ) : null}
               <Text style={s.postText}>{post.text}</Text>
 
+              {post.images && post.images.length > 0 && (
+                <FlatList
+                  horizontal
+                  data={post.images}
+                  keyExtractor={(_, idx) => `img_${idx}`}
+                  showsHorizontalScrollIndicator={false}
+                  renderItem={({item: imgUri}) => (
+                    <Image
+                      source={{uri: imgUri}}
+                      style={s.postImage}
+                      resizeMode="cover"
+                    />
+                  )}
+                  style={s.imageList}
+                />
+              )}
+
               <View style={s.postActions}>
                 <TouchableOpacity
                   style={s.actionBtn}
                   onPress={handleToggleLike}>
-                  <Text
-                    style={[
-                      s.actionText,
-                      post.liked && s.actionActive,
-                    ]}>
-                    {post.liked ? '♥' : '♡'} {post.likes}
-                  </Text>
+                  <View style={s.actionRow}>
+                    <Icon name={post.liked ? 'heart' : 'heart-outline'} size={18} color={post.liked ? theme.colors.error : theme.colors.textTertiary} />
+                    <Text style={[s.actionText, post.liked && s.actionActive]}>{post.likes}</Text>
+                  </View>
                 </TouchableOpacity>
                 <View style={s.actionBtn}>
-                  <Text style={s.actionText}>
-                    💬 {post.comments.length}
-                  </Text>
+                  <View style={s.actionRow}>
+                    <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
+                    <Text style={s.actionText}>{post.comments.length}</Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   style={s.actionBtn}
                   onPress={handleToggleSave}>
-                  <Text
-                    style={[
-                      s.actionText,
-                      post.saved && s.actionActive,
-                    ]}>
-                    {post.saved ? '★ 저장됨' : '☆ 저장'}
-                  </Text>
+                  <View style={s.actionRow}>
+                    <Icon name={post.saved ? 'bookmark' : 'bookmark-outline'} size={18} color={post.saved ? theme.colors.accent : theme.colors.textTertiary} />
+                    <Text style={[s.actionText, post.saved && {color: theme.colors.accent}]}>{post.saved ? '저장됨' : '저장'}</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={s.actionBtn}
                   onPress={handleShare}>
-                  <Text style={s.actionText}>{'↗ 공유'}</Text>
+                  <View style={s.actionRow}>
+                    <Icon name="share-outline" size={18} color={theme.colors.textTertiary} />
+                    <Text style={s.actionText}>공유</Text>
+                  </View>
                 </TouchableOpacity>
               </View>
 
@@ -391,7 +440,7 @@ export default function PostDetailScreen({route, navigation}: any) {
                   <ActivityIndicator
                     size="small"
                     color={theme.colors.primary}
-                    style={{marginLeft: 8}}
+                    style={{marginLeft: theme.spacing.sm}}
                   />
                 )}
               </View>
@@ -418,13 +467,10 @@ export default function PostDetailScreen({route, navigation}: any) {
                           commentId: item.id,
                         })
                       }>
-                      <Text
-                        style={[
-                          s.commentAction,
-                          item.liked && s.commentActionActive,
-                        ]}>
-                        {item.liked ? '♥' : '♡'} {item.likes}
-                      </Text>
+                      <View style={s.actionRow}>
+                        <Icon name={item.liked ? 'heart' : 'heart-outline'} size={14} color={item.liked ? theme.colors.error : theme.colors.textSecondary} />
+                        <Text style={[s.commentAction, item.liked && s.commentActionActive]}>{item.likes}</Text>
+                      </View>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() =>
@@ -472,7 +518,7 @@ export default function PostDetailScreen({route, navigation}: any) {
               {replyTo.userName}님에게 답글 작성 중
             </Text>
             <TouchableOpacity onPress={() => setReplyTo(null)}>
-              <Text style={s.replyCancel}>✕</Text>
+              <Icon name="close" size={16} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}
@@ -498,7 +544,7 @@ export default function PostDetailScreen({route, navigation}: any) {
             onPress={handleComment}
             disabled={!comment.trim() || submitting}>
             {submitting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
             ) : (
               <Text style={s.sendText}>등록</Text>
             )}
@@ -568,7 +614,7 @@ const makeStyles = (theme: Theme) =>
       borderRadius: theme.radius.sm,
     },
     anonBadgeText: {
-      fontSize: 10,
+      ...theme.typography.overline,
       color: theme.colors.textSecondary,
       fontWeight: '600',
     },
@@ -584,7 +630,7 @@ const makeStyles = (theme: Theme) =>
     followBtnText: {
       ...theme.typography.captionSmall,
       fontWeight: '700',
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
     followBtnTextActive: {
       color: theme.colors.textSecondary,
@@ -600,6 +646,16 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
       marginBottom: theme.spacing.base,
     },
+    imageList: {
+      marginBottom: theme.spacing.base,
+    },
+    postImage: {
+      width: Dimensions.get('window').width - 32,
+      height: 250,
+      borderRadius: theme.radius.md,
+      marginRight: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceElevated,
+    },
     postActions: {
       flexDirection: 'row',
       gap: theme.spacing.xl,
@@ -608,6 +664,11 @@ const makeStyles = (theme: Theme) =>
       borderTopColor: theme.colors.border,
     },
     actionBtn: {},
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+    },
     actionText: {
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
@@ -685,7 +746,7 @@ const makeStyles = (theme: Theme) =>
       flexDirection: 'row',
       paddingHorizontal: theme.spacing.base,
       paddingVertical: theme.spacing.sm,
-      paddingLeft: 60,
+      paddingLeft: 56,
       backgroundColor: theme.colors.surfaceElevated,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
@@ -759,6 +820,6 @@ const makeStyles = (theme: Theme) =>
     sendText: {
       ...theme.typography.bodySmall,
       fontWeight: '700',
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
   });

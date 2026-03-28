@@ -1,6 +1,8 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
-import {useTheme} from '../theme';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
+import {useTheme, Theme} from '../theme';
 
 interface HeaderProps {
   title: string;
@@ -11,7 +13,6 @@ interface HeaderProps {
   rightIcon2?: string;
   onRightPress2?: () => void;
   backgroundColor?: string;
-  light?: boolean;
 }
 
 export default function Header({
@@ -23,37 +24,32 @@ export default function Header({
   rightIcon2,
   onRightPress2,
   backgroundColor,
-  light,
 }: HeaderProps) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const s = makeStyles(theme);
 
-  // Default: white background + border (new design)
   const bg = backgroundColor || theme.colors.surface;
-  const isLight = light !== false; // default to light style
-  const titleColor = isLight ? theme.colors.textPrimary : '#fff';
-  const borderStyle = isLight
-    ? {borderBottomWidth: 1, borderBottomColor: theme.colors.border}
-    : {};
 
   return (
-    <View style={[styles.header, {backgroundColor: bg}, borderStyle]}>
-      <View style={styles.left}>
+    <View style={[s.header, {backgroundColor: bg, paddingTop: insets.top}]}>
+      <View style={s.left}>
         {showBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backBtn} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <Text style={[styles.backText, {color: titleColor}]}>{'<'}</Text>
+          <TouchableOpacity onPress={onBack} style={s.backBtn} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Icon name="chevron-back" size={24} color={theme.colors.textPrimary} />
           </TouchableOpacity>
         )}
-        <Text style={[styles.title, theme.typography.h2, {color: titleColor}]}>{title}</Text>
+        <Text style={s.title}>{title}</Text>
       </View>
-      <View style={styles.right}>
+      <View style={s.right}>
         {rightIcon2 && (
           <TouchableOpacity onPress={onRightPress2} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <Text style={styles.icon}>{rightIcon2}</Text>
+            <Icon name={rightIcon2} size={22} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         )}
         {rightIcon && (
           <TouchableOpacity onPress={onRightPress} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <Text style={styles.icon}>{rightIcon}</Text>
+            <Icon name={rightIcon} size={22} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -61,32 +57,32 @@ export default function Header({
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  backBtn: {
-    paddingRight: 4,
-  },
-  backText: {
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  title: {},
-  right: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  icon: {
-    fontSize: 20,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    header: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.base,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    left: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    backBtn: {
+      paddingRight: theme.spacing.xs,
+    },
+    title: {
+      ...theme.typography.h1,
+      color: theme.colors.textPrimary,
+      letterSpacing: -0.5,
+    },
+    right: {
+      flexDirection: 'row',
+      gap: theme.spacing.base,
+    },
+  });

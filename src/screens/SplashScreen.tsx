@@ -3,8 +3,9 @@ import {View, Text, StyleSheet, Animated} from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
+import type {SplashScreenProps} from '../navigation/types';
 
-export default function SplashScreen({navigation}: any) {
+export default function SplashScreen({navigation}: SplashScreenProps) {
   const {state} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);

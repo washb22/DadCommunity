@@ -1,5 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useTheme, Theme} from '../theme';
 
 interface EmptyStateProps {
@@ -14,7 +15,7 @@ export default function EmptyState({icon, title, subtitle}: EmptyStateProps) {
 
   return (
     <View style={s.container}>
-      <Text style={s.icon}>{icon}</Text>
+      <Icon name={icon} size={48} color={theme.colors.textTertiary} style={s.icon} />
       <Text style={s.title}>{title}</Text>
       {subtitle && <Text style={s.subtitle}>{subtitle}</Text>}
     </View>
@@ -31,7 +32,6 @@ const makeStyles = (theme: Theme) =>
       paddingVertical: 60,
     },
     icon: {
-      fontSize: 48,
       marginBottom: theme.spacing.base,
     },
     title: {

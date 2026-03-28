@@ -1,9 +1,13 @@
+export interface FirestoreTimestamp {
+  toDate: () => Date;
+}
+
 export interface Post {
   id: string;
   user: string;
   avatar: string;
   time: string;
-  timestamp: number;
+  timestamp: number | FirestoreTimestamp;
   category: string;
   title: string;
   text: string;
@@ -12,6 +16,14 @@ export interface Post {
   isAnonymous: boolean;
   saved: boolean;
   liked: boolean;
+  likedBy?: string[];
+  savedBy?: string[];
+  userId?: string;
+  commentCount?: number;
+  images?: string[];
+  tags?: string[];
+  shareCount?: number;
+  authorAgeGroup?: string;
 }
 
 export interface Comment {
@@ -20,9 +32,11 @@ export interface Comment {
   avatar: string;
   text: string;
   time: string;
-  timestamp: number;
+  timestamp: number | FirestoreTimestamp;
   likes: number;
   liked: boolean;
+  likedBy: string[];
+  userId: string;
   replies: Reply[];
 }
 
@@ -32,9 +46,11 @@ export interface Reply {
   avatar: string;
   text: string;
   time: string;
-  timestamp: number;
+  timestamp: number | FirestoreTimestamp;
   likes: number;
   liked: boolean;
+  likedBy: string[];
+  userId: string;
 }
 
 export interface ChatRoom {
@@ -43,6 +59,12 @@ export interface ChatRoom {
   avatar: string;
   messages: ChatMessage[];
   unread: number;
+  // Firestore fields
+  members: string[];
+  memberInfo: Record<string, {nickname: string; avatar: string}>;
+  lastMessage: string;
+  lastMessageAt: FirestoreTimestamp | number;
+  unreadCount: Record<string, number>;
 }
 
 export interface ChatMessage {
@@ -50,7 +72,11 @@ export interface ChatMessage {
   sender: 'me' | 'other';
   text: string;
   time: string;
-  timestamp: number;
+  timestamp: number | FirestoreTimestamp;
+  // Firestore fields
+  senderId: string;
+  createdAt: FirestoreTimestamp | number;
+  read: boolean;
 }
 
 export interface Board {
@@ -70,6 +96,8 @@ export interface UserProfile {
   postCount: number;
   likeCount: number;
   saveCount: number;
+  childAgeGroup?: string;
+  interests?: string[];
 }
 
 export const INITIAL_USER: UserProfile = {
@@ -171,21 +199,6 @@ export const INITIAL_CHATROOMS: ChatRoom[] = [];
 
 export const CATEGORIES = ['전체', '부부관계', '자유', '취미', '육아', '직장생활', '재테크/부업', '건강/운동', '요리/집안일'];
 export const TABS = ['최신', '인기', '팔로잉'];
-
-let nextPostId = 100;
-export function getNextPostId() {
-  return String(nextPostId++);
-}
-
-let nextCommentId = 100;
-export function getNextCommentId() {
-  return String('c' + nextCommentId++);
-}
-
-let nextMessageId = 100;
-export function getNextMessageId() {
-  return String('m' + nextMessageId++);
-}
 
 export function getRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;

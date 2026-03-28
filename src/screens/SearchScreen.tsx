@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -7,45 +7,145 @@ import {
   FlatList,
   StyleSheet,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import PostCard from '../components/PostCard';
 import EmptyState from '../components/EmptyState';
+import * as postService from '../services/postService';
+import type {SearchScreenProps} from '../navigation/types';
+import type {Post} from '../data/mockData';
 
-const POPULAR_KEYWORDS = ['육아', '캠핑', '부부', '운동', '요리', '재테크'];
+const FALLBACK_KEYWORDS = ['육아', '캠핑', '부부', '운동', '요리', '재테크'];
 
-export default function SearchScreen({navigation}: any) {
-  const {state, dispatch} = useApp();
+export default function SearchScreen({navigation}: SearchScreenProps) {
+  const {state} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState(false);
+  const [results, setResults] = useState<Post[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [popularKeywords, setPopularKeywords] = useState<string[]>(FALLBACK_KEYWORDS);
 
-  const results = searched
-    ? state.posts.filter(
-        p =>
-          p.title.includes(query) ||
-          p.text.includes(query) ||
-          p.user.includes(query),
-      )
-    : [];
+  // Load popular keywords from Firestore
+  useEffect(() => {
+    firestore()
+      .collection('searchLogs')
+      .orderBy('count', 'desc')
+      .limit(8)
+      .get()
+      .then(snapshot => {
+        if (!snapshot.empty) {
+          const keywords = snapshot.docs.map(doc => doc.data().keyword as string);
+          setPopularKeywords(keywords);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
-  const handleSearch = () => {
-    const q = query.trim();
-    if (q) {
+  const handleSearch = useCallback(
+    async (searchQuery?: string) => {
+      const q = (searchQuery || query).trim();
+      if (!q) return;
+
       setSearched(true);
-      firestore()
-        .collection('searchLogs')
-        .doc(q)
-        .set(
-          {keyword: q, count: firestore.FieldValue.increment(1), lastSearched: firestore.FieldValue.serverTimestamp()},
-          {merge: true},
-        )
-        .catch(() => {});
-    }
-  };
+      setSearching(true);
+
+      try {
+        // Log search keyword
+        firestore()
+          .collection('searchLogs')
+          .doc(q)
+          .set(
+            {
+              keyword: q,
+              count: firestore.FieldValue.increment(1),
+              lastSearched: firestore.FieldValue.serverTimestamp(),
+            },
+            {merge: true},
+          )
+          .catch(() => {});
+
+        // Fetch recent posts from Firestore and filter client-side
+        // Firestore doesn't support full-text search, so we fetch a broader set
+        const snapshot = await firestore()
+          .collection('posts')
+          .orderBy('timestamp', 'desc')
+          .limit(200)
+          .get();
+
+        const allPosts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        const lowerQ = q.toLowerCase();
+        const filtered = allPosts.filter(
+          (p: Partial<Post>) =>
+            (p.title && p.title.toLowerCase().includes(lowerQ)) ||
+            (p.text && p.text.toLowerCase().includes(lowerQ)) ||
+            (p.category && p.category.toLowerCase().includes(lowerQ)),
+        );
+
+        setResults(
+          postService.enrichPostsWithUserData(filtered, state.uid),
+        );
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [query, state.uid],
+  );
+
+  const handleToggleLike = useCallback(
+    async (postId: string) => {
+      if (!state.uid) return;
+      setResults(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1}
+            : p,
+        ),
+      );
+      try {
+        await postService.toggleLike(postId, state.uid);
+      } catch (error) {
+        setResults(prev =>
+          prev.map(p =>
+            p.id === postId
+              ? {...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1}
+              : p,
+          ),
+        );
+        console.error('Failed to toggle like:', error);
+      }
+    },
+    [state.uid],
+  );
+
+  const handleToggleSave = useCallback(
+    async (postId: string) => {
+      if (!state.uid) return;
+      setResults(prev =>
+        prev.map(p => (p.id === postId ? {...p, saved: !p.saved} : p)),
+      );
+      try {
+        await postService.toggleSave(postId, state.uid);
+      } catch (error) {
+        setResults(prev =>
+          prev.map(p => (p.id === postId ? {...p, saved: !p.saved} : p)),
+        );
+        console.error('Failed to toggle save:', error);
+      }
+    },
+    [state.uid],
+  );
 
   return (
     <SafeAreaView style={s.container}>
@@ -54,7 +154,7 @@ export default function SearchScreen({navigation}: any) {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Text style={s.back}>{'<'}</Text>
+          <Icon name="chevron-back" size={24} color={theme.colors.textPrimary} />
         </TouchableOpacity>
         <TextInput
           style={s.input}
@@ -63,9 +163,12 @@ export default function SearchScreen({navigation}: any) {
           value={query}
           onChangeText={text => {
             setQuery(text);
-            if (!text.trim()) setSearched(false);
+            if (!text.trim()) {
+              setSearched(false);
+              setResults([]);
+            }
           }}
-          onSubmitEditing={handleSearch}
+          onSubmitEditing={() => handleSearch()}
           returnKeyType="search"
           autoFocus
         />
@@ -74,8 +177,9 @@ export default function SearchScreen({navigation}: any) {
             onPress={() => {
               setQuery('');
               setSearched(false);
+              setResults([]);
             }}>
-            <Text style={s.clear}>✕</Text>
+            <Icon name="close-circle" size={18} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
@@ -84,22 +188,26 @@ export default function SearchScreen({navigation}: any) {
         <View style={s.suggestSection}>
           <Text style={s.suggestTitle}>인기 검색어</Text>
           <View style={s.keywords}>
-            {POPULAR_KEYWORDS.map(kw => (
+            {popularKeywords.map(kw => (
               <TouchableOpacity
                 key={kw}
                 style={s.kwChip}
                 onPress={() => {
                   setQuery(kw);
-                  setSearched(true);
+                  handleSearch(kw);
                 }}>
                 <Text style={s.kwText}>{kw}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
+      ) : searching ? (
+        <View style={s.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
       ) : results.length === 0 ? (
         <EmptyState
-          icon="🔍"
+          icon="search-outline"
           title={`'${query}'에 대한 결과가 없습니다`}
           subtitle="다른 검색어로 시도해보세요"
         />
@@ -113,8 +221,8 @@ export default function SearchScreen({navigation}: any) {
               onPress={() =>
                 navigation.navigate('PostDetail', {postId: item.id})
               }
-              onLike={() => dispatch({type: 'TOGGLE_LIKE', postId: item.id})}
-              onSave={() => dispatch({type: 'TOGGLE_SAVE', postId: item.id})}
+              onLike={() => handleToggleLike(item.id)}
+              onSave={() => handleToggleSave(item.id)}
             />
           )}
           contentContainerStyle={s.resultList}
@@ -146,11 +254,6 @@ const makeStyles = (theme: Theme) =>
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
-    back: {
-      fontSize: 22,
-      color: theme.colors.textPrimary,
-      fontWeight: '600',
-    },
     input: {
       flex: 1,
       height: 40,
@@ -164,6 +267,11 @@ const makeStyles = (theme: Theme) =>
       fontSize: 16,
       color: theme.colors.textSecondary,
       padding: theme.spacing.xs,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     suggestSection: {
       padding: theme.spacing.lg,

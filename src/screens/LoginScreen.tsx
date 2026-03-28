@@ -11,12 +11,14 @@ import {
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {
   signInWithGoogle,
   signInAnonymously,
 } from '../services/authService';
+import type {LoginScreenProps} from '../navigation/types';
 
-export default function LoginScreen({navigation}: any) {
+export default function LoginScreen({navigation}: LoginScreenProps) {
   const {dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
@@ -142,7 +144,7 @@ export default function LoginScreen({navigation}: any) {
           style={[s.loginBtn, s.kakao]}
           onPress={handleKakaoLogin}
           activeOpacity={0.8}>
-          <Text style={s.kakaoText}>💬  카카오로 시작하기</Text>
+          <Text style={s.kakaoText}><Icon name="chatbubble" size={18} color={s.kakaoText.color} />  카카오로 시작하기</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -235,7 +237,7 @@ const makeStyles = (theme: Theme) =>
     naverText: {
       ...theme.typography.body,
       fontWeight: '700',
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
     google: {
       backgroundColor: theme.colors.surface,

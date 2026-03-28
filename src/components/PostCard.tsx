@@ -1,7 +1,9 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, Image, FlatList, StyleSheet} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {Post} from '../data/mockData';
 import {useTheme, Theme} from '../theme';
+import AgeBadge from './AgeBadge';
 
 interface PostCardProps {
   post: Post;
@@ -29,11 +31,13 @@ export default function PostCard({post, onPress, onLike, onSave}: PostCardProps)
             {post.time} · {post.category}
           </Text>
         </View>
-        {post.isAnonymous && (
+        {post.isAnonymous ? (
           <View style={s.anonBadge}>
             <Text style={s.anonText}>익명</Text>
           </View>
-        )}
+        ) : post.authorAgeGroup ? (
+          <AgeBadge ageGroup={post.authorAgeGroup} />
+        ) : null}
       </View>
 
       {post.title ? (
@@ -45,27 +49,52 @@ export default function PostCard({post, onPress, onLike, onSave}: PostCardProps)
         {post.text}
       </Text>
 
+      {post.images && post.images.length > 0 && (
+        <FlatList
+          horizontal
+          data={post.images}
+          keyExtractor={(_, idx) => `img_${idx}`}
+          showsHorizontalScrollIndicator={false}
+          renderItem={({item}) => (
+            <Image
+              source={{uri: item}}
+              style={s.postImage}
+              resizeMode="cover"
+            />
+          )}
+          style={s.imageList}
+        />
+      )}
+
       <View style={s.actions}>
         <TouchableOpacity
           style={s.actionBtn}
           onPress={onLike}
           hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Icon
+            name={post.liked ? 'heart' : 'heart-outline'}
+            size={18}
+            color={post.liked ? theme.colors.error : theme.colors.textTertiary}
+          />
           <Text style={[s.actionText, post.liked && {color: theme.colors.error}]}>
-            {post.liked ? '♥' : '♡'} {post.likes}
+            {' '}{post.likes}
           </Text>
         </TouchableOpacity>
         <View style={s.actionBtn}>
+          <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
           <Text style={s.actionText}>
-            💬 {post.comments.length}
+            {' '}{post.comments.length}
           </Text>
         </View>
         <TouchableOpacity
           style={s.actionBtn}
           onPress={onSave}
           hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Text style={[s.actionText, post.saved && {color: theme.colors.accent}]}>
-            {post.saved ? '★' : '☆'}
-          </Text>
+          <Icon
+            name={post.saved ? 'bookmark' : 'bookmark-outline'}
+            size={18}
+            color={post.saved ? theme.colors.accent : theme.colors.textTertiary}
+          />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -76,10 +105,12 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     card: {
       backgroundColor: theme.colors.surface,
-      marginHorizontal: theme.spacing.md,
+      marginHorizontal: theme.spacing.base,
       marginBottom: theme.spacing.sm,
-      borderRadius: theme.radius.md,
-      padding: theme.spacing.base,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
       ...theme.shadows.level2,
     },
     header: {
@@ -88,9 +119,9 @@ const makeStyles = (theme: Theme) =>
       marginBottom: theme.spacing.sm,
     },
     avatar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 40,
+      height: 40,
+      borderRadius: theme.radius.circle,
       backgroundColor: theme.colors.surfaceElevated,
       alignItems: 'center',
       justifyContent: 'center',
@@ -110,33 +141,42 @@ const makeStyles = (theme: Theme) =>
     meta: {
       ...theme.typography.overline,
       color: theme.colors.textTertiary,
-      marginTop: 2,
+      marginTop: theme.spacing.xs,
     },
     anonBadge: {
       backgroundColor: theme.colors.surfaceElevated,
       paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 3,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.sm,
     },
     anonText: {
-      fontSize: 10,
+      ...theme.typography.overline,
       color: theme.colors.textSecondary,
       fontWeight: '600',
     },
     title: {
-      ...theme.typography.body,
-      fontWeight: '700',
+      ...theme.typography.h3,
       color: theme.colors.textPrimary,
       marginBottom: theme.spacing.xs,
     },
     text: {
-      ...theme.typography.bodySmall,
+      ...theme.typography.body,
       color: theme.colors.textSecondary,
       marginBottom: theme.spacing.md,
     },
+    imageList: {
+      marginBottom: theme.spacing.sm,
+    },
+    postImage: {
+      width: 200,
+      height: 150,
+      borderRadius: theme.radius.sm,
+      marginRight: theme.spacing.sm,
+      backgroundColor: theme.colors.surfaceElevated,
+    },
     actions: {
       flexDirection: 'row',
-      gap: 20,
+      gap: theme.spacing.xl,
       paddingTop: theme.spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,

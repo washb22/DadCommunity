@@ -8,43 +8,68 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
+import firestore from '@react-native-firebase/firestore';
+import {uploadProfileImage, pickImage} from '../services/storageService';
+import type {EditProfileScreenProps} from '../navigation/types';
 
 const AVATARS = ['🧔', '👨', '👴', '🧑', '👨‍🦳', '👨‍🍳', '💪', '🏕️', '⛺', '🎮', '🎸', '📚'];
 
-export default function EditProfileScreen({navigation}: any) {
+export default function EditProfileScreen({navigation}: EditProfileScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const s = makeStyles(theme);
   const [nickname, setNickname] = useState(state.user.nickname);
   const [bio, setBio] = useState(state.user.bio);
   const [avatar, setAvatar] = useState(state.user.avatar);
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
     if (!nickname.trim()) {
       Alert.alert('알림', '닉네임을 입력해주세요.');
       return;
     }
-    dispatch({
-      type: 'UPDATE_PROFILE',
-      updates: {nickname: nickname.trim(), bio: bio.trim(), avatar},
-    });
-    Alert.alert('완료', '프로필이 수정되었습니다.', [
-      {text: '확인', onPress: () => navigation.goBack()},
-    ]);
+    if (!state.uid) {
+      Alert.alert('알림', '로그인이 필요합니다.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updates = {nickname: nickname.trim(), bio: bio.trim(), avatar};
+      await firestore().collection('users').doc(state.uid).update(updates);
+      dispatch({type: 'UPDATE_PROFILE', updates});
+      Alert.alert('완료', '프로필이 수정되었습니다.', [
+        {text: '확인', onPress: () => navigation.goBack()},
+      ]);
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      Alert.alert('오류', '프로필 저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <SafeAreaView style={s.container}>
-      <View style={s.header}>
+      <View style={[s.header, {paddingTop: insets.top}]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={s.cancelText}>취소</Text>
         </TouchableOpacity>
         <Text style={s.headerTitle}>프로필 수정</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={s.saveText}>저장</Text>
+        <TouchableOpacity onPress={handleSave} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <Text style={s.saveText}>저장</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -59,12 +84,16 @@ export default function EditProfileScreen({navigation}: any) {
                   text: '갤러리에서 선택',
                   onPress: async () => {
                     try {
-                      const {pickImage} = require('../services/storageService');
                       const uri = await pickImage();
-                      if (uri) {
-                        Alert.alert('알림', '프로필 사진이 선택되었습니다.\n(Firebase 연동 후 업로드됩니다)');
+                      if (uri && state.uid) {
+                        const downloadUrl = await uploadProfileImage(state.uid, uri);
+                        setAvatar(downloadUrl);
+                        Alert.alert('알림', '프로필 사진이 업로드되었습니다.');
                       }
-                    } catch {}
+                    } catch (error) {
+                      console.error('Profile image upload failed:', error);
+                      Alert.alert('오류', '이미지 업로드에 실패했습니다.');
+                    }
                   },
                 },
                 {text: '아이콘 선택하기', style: 'cancel'},
@@ -72,7 +101,7 @@ export default function EditProfileScreen({navigation}: any) {
             }}>
             <Text style={s.currentAvatarText}>{avatar}</Text>
             <View style={s.cameraIcon}>
-              <Text style={s.cameraIconText}>📷</Text>
+              <Icon name="camera" size={14} color={theme.colors.onPrimary} />
             </View>
           </TouchableOpacity>
           <Text style={s.avatarLabel}>프로필 아이콘 선택</Text>
@@ -183,9 +212,6 @@ const makeStyles = (theme: Theme) =>
       justifyContent: 'center',
       borderWidth: 2,
       borderColor: theme.colors.surface,
-    },
-    cameraIconText: {
-      fontSize: 14,
     },
     avatarLabel: {
       ...theme.typography.caption,

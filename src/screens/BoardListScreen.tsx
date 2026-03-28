@@ -7,17 +7,31 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
-import {BOARDS} from '../data/mockData';
+import {BOARDS, Board} from '../data/mockData';
+import type {BoardListScreenProps} from '../navigation/types';
 
-function BoardItem({board, postCount, onPress, theme}: {board: any; postCount: number; onPress: () => void; theme: any}) {
+const BOARD_ICON_MAP: Record<string, string> = {
+  '💑': 'heart-outline',
+  '📝': 'chatbubbles-outline',
+  '🎮': 'game-controller-outline',
+  '👶': 'people-outline',
+  '💼': 'briefcase-outline',
+  '💰': 'trending-up-outline',
+  '💪': 'fitness-outline',
+  '🍳': 'restaurant-outline',
+  '📢': 'megaphone-outline',
+};
+
+function BoardItem({board, postCount, onPress, theme}: {board: Board; postCount: number; onPress: () => void; theme: Theme}) {
   const s = makeStyles(theme);
   return (
     <TouchableOpacity style={s.boardItem} onPress={onPress} activeOpacity={0.6}>
       <View style={[s.boardIcon, {backgroundColor: board.iconBg}]}>
-        <Text style={s.boardEmoji}>{board.icon}</Text>
+        <Icon name={BOARD_ICON_MAP[board.icon] || 'ellipse-outline'} size={22} color={theme.colors.onPrimary} />
       </View>
       <View style={s.boardInfo}>
         <Text style={s.boardName}>{board.name}</Text>
@@ -26,13 +40,13 @@ function BoardItem({board, postCount, onPress, theme}: {board: any; postCount: n
       <View style={s.boardRight}>
         {board.hasNew && <View style={s.newDot} />}
         <Text style={s.postCount}>{postCount}개</Text>
-        <Text style={s.arrow}>{'>'}</Text>
+        <Icon name="chevron-forward" size={18} color={theme.colors.textTertiary} />
       </View>
     </TouchableOpacity>
   );
 }
 
-export default function BoardListScreen({navigation}: any) {
+export default function BoardListScreen({navigation}: BoardListScreenProps) {
   const {state} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
@@ -41,7 +55,7 @@ export default function BoardListScreen({navigation}: any) {
     <SafeAreaView style={s.container}>
       <Header
         title="게시판"
-        rightIcon="🔍"
+        rightIcon="search-outline"
         onRightPress={() => navigation.navigate('Search')}
       />
       <FlatList
@@ -111,7 +125,7 @@ const makeStyles = (theme: Theme) =>
     boardDesc: {
       ...theme.typography.captionSmall,
       color: theme.colors.textSecondary,
-      marginTop: 3,
+      marginTop: theme.spacing.xs,
     },
     boardRight: {
       flexDirection: 'row',

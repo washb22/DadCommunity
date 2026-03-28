@@ -11,8 +11,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
+import type {OnboardingScreenProps} from '../navigation/types';
 
 const AVATARS = ['🧔', '👨', '👴', '🧑', '👨‍🦳', '👨‍🍳', '💪', '🏕️', '⛺', '🎮', '🎸', '📚'];
 
@@ -49,7 +51,7 @@ interface ChildInfo {
   count: number;
 }
 
-export default function OnboardingScreen({navigation}: any) {
+export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
@@ -110,21 +112,29 @@ export default function OnboardingScreen({navigation}: any) {
 
     setSubmitting(true);
     try {
-      await firestore().collection('users').doc(state.uid).update({
-        nickname: nickname.trim(),
-        avatar,
-        childInfo: {
-          ageGroup: childInfo.ageGroup,
-          gender: childInfo.gender,
-          count: childInfo.count,
+      await firestore().collection('users').doc(state.uid).set(
+        {
+          nickname: nickname.trim(),
+          avatar,
+          childInfo: {
+            ageGroup: childInfo.ageGroup,
+            gender: childInfo.gender,
+            count: childInfo.count,
+          },
+          interests: selectedInterests,
+          onboardingCompleted: true,
         },
-        interests: selectedInterests,
-        onboardingCompleted: true,
-      });
+        {merge: true},
+      );
 
       dispatch({
         type: 'UPDATE_PROFILE',
-        updates: {nickname: nickname.trim(), avatar},
+        updates: {
+          nickname: nickname.trim(),
+          avatar,
+          childAgeGroup: childInfo.ageGroup,
+          interests: selectedInterests,
+        },
       });
 
       navigation.replace('Main');
@@ -305,8 +315,9 @@ export default function OnboardingScreen({navigation}: any) {
       {/* Header */}
       <View style={s.header}>
         {step > 1 ? (
-          <TouchableOpacity onPress={handleBack} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <Text style={s.backText}>{'< 이전'}</Text>
+          <TouchableOpacity onPress={handleBack} style={{flexDirection: 'row', alignItems: 'center'}} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Icon name="chevron-back" size={20} color={theme.colors.primary} />
+            <Text style={s.backText}>이전</Text>
           </TouchableOpacity>
         ) : (
           <View style={s.placeholder} />
@@ -335,7 +346,7 @@ export default function OnboardingScreen({navigation}: any) {
             disabled={submitting}
             activeOpacity={0.8}>
             {submitting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
             ) : (
               <Text style={s.nextButtonText}>시작하기</Text>
             )}
@@ -482,7 +493,7 @@ const makeStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     chip: {
-      paddingHorizontal: 18,
+      paddingHorizontal: theme.spacing.base,
       paddingVertical: theme.spacing.md,
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.background,
@@ -499,7 +510,7 @@ const makeStyles = (theme: Theme) =>
       fontWeight: '600',
     },
     chipTextActive: {
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
     interestGrid: {
       flexDirection: 'row',
@@ -521,7 +532,7 @@ const makeStyles = (theme: Theme) =>
       fontWeight: '600',
     },
     interestTextActive: {
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
     selectedCount: {
       textAlign: 'center',
@@ -553,6 +564,6 @@ const makeStyles = (theme: Theme) =>
     nextButtonText: {
       ...theme.typography.bodyLarge,
       fontWeight: '700',
-      color: '#fff',
+      color: theme.colors.onPrimary,
     },
   });

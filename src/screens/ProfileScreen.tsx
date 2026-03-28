@@ -7,41 +7,47 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  Switch,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
-import {useTheme, Theme} from '../theme';
+import {useTheme, useDarkMode, Theme} from '../theme';
 import Header from '../components/Header';
+import AgeBadge from '../components/AgeBadge';
+import InterestChips from '../components/InterestChip';
 import {signOut} from '../services/authService';
+import type {ProfileScreenProps} from '../navigation/types';
 
 const MENU_SECTIONS = [
   {
     title: '나의 활동',
     items: [
-      {icon: '📝', label: '내가 쓴 글', screen: 'MyPosts'},
-      {icon: '💬', label: '내가 쓴 댓글', screen: 'MyComments'},
-      {icon: '★', label: '저장한 글', screen: 'SavedPosts'},
+      {icon: 'create-outline', label: '내가 쓴 글', screen: 'MyPosts'},
+      {icon: 'chatbubble-outline', label: '내가 쓴 댓글', screen: 'MyComments'},
+      {icon: 'bookmark-outline', label: '저장한 글', screen: 'SavedPosts'},
     ],
   },
   {
     title: '설정',
     items: [
-      {icon: '🔔', label: '알림 설정', screen: null},
-      {icon: '🚫', label: '차단 관리', screen: 'BlockList'},
+      {icon: 'notifications-outline', label: '알림 설정', screen: 'NotificationSettings'},
+      {icon: 'ban-outline', label: '차단 관리', screen: 'BlockList'},
     ],
   },
   {
     title: '정보',
     items: [
-      {icon: '📞', label: '문의하기', screen: null},
-      {icon: '📄', label: '이용약관', screen: null},
-      {icon: '🔒', label: '개인정보처리방침', screen: null},
+      {icon: 'call-outline', label: '문의하기', screen: 'Contact'},
+      {icon: 'document-text-outline', label: '이용약관', screen: 'Terms'},
+      {icon: 'lock-closed-outline', label: '개인정보처리방침', screen: 'PrivacyPolicy'},
     ],
   },
 ];
 
-export default function ProfileScreen({navigation}: any) {
+export default function ProfileScreen({navigation}: ProfileScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
+  const {forceDarkMode, setForceDarkMode} = useDarkMode();
   const s = makeStyles(theme);
   const {user} = state;
 
@@ -68,7 +74,7 @@ export default function ProfileScreen({navigation}: any) {
     <SafeAreaView style={s.container}>
       <Header
         title="마이페이지"
-        rightIcon="⚙️"
+        rightIcon="settings-outline"
         onRightPress={() => {}}
       />
 
@@ -80,7 +86,10 @@ export default function ProfileScreen({navigation}: any) {
               <Text style={s.avatarText}>{user.avatar}</Text>
             </View>
             <View style={s.profileInfo}>
-              <Text style={s.userName}>{user.nickname}</Text>
+              <View style={s.userNameRow}>
+                <Text style={s.userName}>{user.nickname}</Text>
+                {user.childAgeGroup ? <AgeBadge ageGroup={user.childAgeGroup} /> : null}
+              </View>
               <Text style={s.userBio}>{user.bio}</Text>
             </View>
           </View>
@@ -91,6 +100,12 @@ export default function ProfileScreen({navigation}: any) {
             activeOpacity={0.7}>
             <Text style={s.editBtnText}>프로필 수정</Text>
           </TouchableOpacity>
+
+          {user.interests && user.interests.length > 0 && (
+            <View style={s.interestsSection}>
+              <InterestChips interests={user.interests} />
+            </View>
+          )}
 
           <View style={s.stats}>
             <View style={s.stat}>
@@ -124,13 +139,35 @@ export default function ProfileScreen({navigation}: any) {
                   }
                 }}
                 activeOpacity={0.6}>
-                <Text style={s.menuIcon}>{item.icon}</Text>
+                <Icon name={item.icon} size={20} color={theme.colors.textSecondary} style={s.menuIcon} />
                 <Text style={s.menuLabel}>{item.label}</Text>
-                <Text style={s.menuArrow}>{'>'}</Text>
+                <Icon name="chevron-forward" size={20} color={theme.colors.textTertiary} />
               </TouchableOpacity>
             ))}
           </View>
         ))}
+
+        {/* Dark Mode Toggle */}
+        <View style={s.menuSection}>
+          <Text style={s.sectionTitle}>화면</Text>
+          <View style={s.menuItem}>
+            <Icon name="moon-outline" size={20} color={theme.colors.textSecondary} style={s.menuIcon} />
+            <View style={s.darkModeContent}>
+              <Text style={s.menuLabel}>다크 모드</Text>
+              <Text style={s.darkModeCaption}>
+                {forceDarkMode
+                  ? '항상 다크 모드를 사용합니다'
+                  : '시스템 설정을 따릅니다'}
+              </Text>
+            </View>
+            <Switch
+              value={forceDarkMode}
+              onValueChange={setForceDarkMode}
+              trackColor={{false: '#D4C9B8', true: theme.colors.primary}}
+              thumbColor={theme.colors.onPrimary}
+            />
+          </View>
+        </View>
 
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
@@ -152,9 +189,9 @@ const makeStyles = (theme: Theme) =>
     profileCard: {
       backgroundColor: theme.colors.surface,
       margin: theme.spacing.md,
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.xl,
       padding: theme.spacing.lg,
-      ...theme.shadows.level2,
+      ...theme.shadows.level3,
     },
     profileTop: {
       flexDirection: 'row',
@@ -176,6 +213,11 @@ const makeStyles = (theme: Theme) =>
     profileInfo: {
       flex: 1,
     },
+    userNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
     userName: {
       ...theme.typography.h2,
       fontWeight: '800',
@@ -191,12 +233,15 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.surfaceElevated,
+      backgroundColor: theme.colors.secondary,
+      marginBottom: theme.spacing.base,
+    },
+    interestsSection: {
       marginBottom: theme.spacing.base,
     },
     editBtnText: {
       ...theme.typography.bodySmall,
-      color: theme.colors.textSecondary,
+      color: theme.colors.textPrimary,
       fontWeight: '600',
     },
     stats: {
@@ -236,7 +281,7 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textTertiary,
       paddingHorizontal: theme.spacing.base,
       paddingTop: theme.spacing.md,
-      paddingBottom: 6,
+      paddingBottom: theme.spacing.sm,
       letterSpacing: 0.5,
     },
     menuItem: {
@@ -248,7 +293,6 @@ const makeStyles = (theme: Theme) =>
       borderBottomColor: theme.colors.border,
     },
     menuIcon: {
-      fontSize: 18,
       marginRight: theme.spacing.md,
     },
     menuLabel: {
@@ -256,10 +300,13 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.body,
       color: theme.colors.textPrimary,
     },
-    menuArrow: {
-      fontSize: 16,
+    darkModeContent: {
+      flex: 1,
+    },
+    darkModeCaption: {
+      ...theme.typography.captionSmall,
       color: theme.colors.textTertiary,
-      fontWeight: '300',
+      marginTop: theme.spacing.xs,
     },
     logoutBtn: {
       marginHorizontal: theme.spacing.md,

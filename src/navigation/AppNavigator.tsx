@@ -24,13 +24,17 @@ import MyPostsScreen from '../screens/MyPostsScreen';
 import MyCommentsScreen from '../screens/MyCommentsScreen';
 import SavedPostsScreen from '../screens/SavedPostsScreen';
 import BlockListScreen from '../screens/BlockListScreen';
+import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
+import TermsScreen from '../screens/TermsScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import ContactScreen from '../screens/ContactScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS: Record<string, {focused: string; unfocused: string}> = {
   '\uD648': {focused: 'home', unfocused: 'home-outline'},
-  '\uAC8C\uC2DC\uD310': {focused: 'grid', unfocused: 'grid-outline'},
+  '\uAC8C\uC2DC\uD310': {focused: 'clipboard', unfocused: 'clipboard-outline'},
   '\uCC44\uD305': {focused: 'chatbubbles', unfocused: 'chatbubbles-outline'},
   '\uB9C8\uC774': {focused: 'person', unfocused: 'person-outline'},
 };
@@ -51,7 +55,7 @@ function MainTabs() {
         tabBarIcon: ({focused, color, size}) => {
           const icons = TAB_ICONS[route.name];
           const iconName = focused ? icons?.focused : icons?.unfocused;
-          return <Icon name={iconName || 'ellipse-outline'} size={22} color={color} />;
+          return <Icon name={iconName || 'ellipse-outline'} size={24} color={color} />;
         },
       })}>
       <Tab.Screen name="홈" component={HomeFeedScreen} />
@@ -94,6 +98,10 @@ export default function AppNavigator() {
         <Stack.Screen name="MyComments" component={MyCommentsScreen} />
         <Stack.Screen name="SavedPosts" component={SavedPostsScreen} />
         <Stack.Screen name="BlockList" component={BlockListScreen} />
+        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+        <Stack.Screen name="Terms" component={TermsScreen} />
+        <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+        <Stack.Screen name="Contact" component={ContactScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -102,9 +110,9 @@ export default function AppNavigator() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     tabBar: {
-      height: 64,
+      height: 68,
       paddingBottom: 10,
-      paddingTop: 8,
+      paddingTop: 10,
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
@@ -112,6 +120,6 @@ const makeStyles = (theme: Theme) =>
     },
     tabLabel: {
       ...theme.typography.overline,
-      marginTop: 2,
+      marginTop: theme.spacing.xs,
     },
   });

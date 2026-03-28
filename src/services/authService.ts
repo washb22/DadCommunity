@@ -66,7 +66,17 @@ async function ensureUserProfile(user: any) {
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const doc = await usersRef.doc(uid).get();
   if (!doc.exists) return null;
-  return doc.data() as UserProfile;
+  const data = doc.data() as Record<string, any>;
+  return {
+    nickname: data.nickname || '',
+    avatar: data.avatar || '🧔',
+    bio: data.bio || '',
+    postCount: data.postCount || 0,
+    likeCount: data.likeCount || 0,
+    saveCount: data.saveCount || 0,
+    childAgeGroup: data.childInfo?.ageGroup || data.childAgeGroup,
+    interests: data.interests || [],
+  };
 }
 
 export async function updateUserProfile(

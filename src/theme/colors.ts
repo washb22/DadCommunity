@@ -16,6 +16,7 @@ export const colors = {
     border: '#E8E4DF',
     error: '#C44B4B',
     success: '#4B8C6B',
+    onPrimary: '#FFFFFF',
   },
   dark: {
     primary: '#6B9FD4',
@@ -34,5 +35,6 @@ export const colors = {
     border: '#3A3A40',
     error: '#E06060',
     success: '#5EAD80',
+    onPrimary: '#FFFFFF',
   },
 };
