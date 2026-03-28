@@ -1,6 +1,7 @@
 import React from 'react';
 import {FlatList, StyleSheet, SafeAreaView} from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import PostCard from '../components/PostCard';
 import EmptyState from '../components/EmptyState';
@@ -8,11 +9,13 @@ import EmptyState from '../components/EmptyState';
 export default function BoardDetailScreen({route, navigation}: any) {
   const {boardName, category} = route.params;
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
 
   const posts = state.posts.filter(p => p.category === category);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       <Header
         title={boardName}
         showBack
@@ -36,7 +39,7 @@ export default function BoardDetailScreen({route, navigation}: any) {
               onSave={() => dispatch({type: 'TOGGLE_SAVE', postId: item.id})}
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -44,12 +47,13 @@ export default function BoardDetailScreen({route, navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
-  listContent: {
-    paddingVertical: 10,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    listContent: {
+      paddingVertical: theme.spacing.sm,
+    },
+  });

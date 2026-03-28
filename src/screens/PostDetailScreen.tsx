@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -10,36 +10,195 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
+  Share,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
+import * as postService from '../services/postService';
+import * as followService from '../services/followService';
+import {getRelativeTime} from '../data/mockData';
+import {Comment} from '../data/mockData';
 
 export default function PostDetailScreen({route, navigation}: any) {
   const {postId} = route.params;
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
   const [comment, setComment] = useState('');
   const [replyTo, setReplyTo] = useState<{commentId: string; userName: string} | null>(null);
+  const [loadingComments, setLoadingComments] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const post = state.posts.find(p => p.id === postId);
-  if (!post) return null;
 
-  const handleComment = () => {
-    if (!comment.trim()) return;
-    if (replyTo) {
-      dispatch({
-        type: 'ADD_REPLY',
-        postId,
-        commentId: replyTo.commentId,
-        text: comment.trim(),
-      });
-      setReplyTo(null);
-    } else {
-      dispatch({type: 'ADD_COMMENT', postId, text: comment.trim()});
+  // Check follow status on mount
+  useEffect(() => {
+    if (!state.uid || !post) return;
+    const authorId = (post as any).userId;
+    if (!authorId || authorId === state.uid) return;
+    followService.isFollowing(state.uid, authorId).then(setIsFollowingAuthor).catch(() => {});
+  }, [state.uid, post]);
+
+  const handleToggleFollow = async () => {
+    if (!state.uid || !post) return;
+    const authorId = (post as any).userId;
+    if (!authorId || authorId === state.uid) return;
+
+    setFollowLoading(true);
+    try {
+      if (isFollowingAuthor) {
+        await followService.unfollowUser(state.uid, authorId);
+        setIsFollowingAuthor(false);
+      } else {
+        await followService.followUser(state.uid, authorId);
+        setIsFollowingAuthor(true);
+      }
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    } finally {
+      setFollowLoading(false);
     }
-    setComment('');
   };
 
-  const isMyPost = post.user === state.user.nickname;
+  const handleShare = async () => {
+    if (!post) return;
+    try {
+      const preview = post.text.length > 100 ? post.text.substring(0, 100) + '...' : post.text;
+      await Share.share({
+        title: post.title,
+        message: `[아빠의 다락방] ${post.title}\n\n${preview}\n\n앱에서 더 보기: https://dadcommunity.app/post/${post.id}`,
+      });
+    } catch (error) {
+      console.error('Share failed:', error);
+    }
+  };
+
+  // Fetch comments from Firebase on mount
+  const fetchComments = useCallback(async () => {
+    try {
+      const comments = await postService.fetchComments(postId);
+      const enrichedComments: Comment[] = comments.map(c => {
+        const ts =
+          c.timestamp && typeof (c.timestamp as any).toDate === 'function'
+            ? (c.timestamp as any).toDate().getTime()
+            : typeof c.timestamp === 'number'
+            ? c.timestamp
+            : Date.now();
+        return {
+          ...c,
+          time: getRelativeTime(ts),
+          timestamp: ts,
+          liked: Array.isArray((c as any).likedBy)
+            ? (c as any).likedBy.includes(state.uid || '')
+            : false,
+          replies: (c.replies || []).map(r => {
+            const rts =
+              r.timestamp && typeof (r.timestamp as any).toDate === 'function'
+                ? (r.timestamp as any).toDate().getTime()
+                : typeof r.timestamp === 'number'
+                ? r.timestamp
+                : Date.now();
+            return {
+              ...r,
+              time: getRelativeTime(rts),
+              timestamp: rts,
+              liked: Array.isArray((r as any).likedBy)
+                ? (r as any).likedBy.includes(state.uid || '')
+                : false,
+            };
+          }),
+        };
+      });
+      dispatch({type: 'SET_COMMENTS', postId, comments: enrichedComments});
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, [postId, state.uid, dispatch]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
+
+  if (!post) {
+    return (
+      <SafeAreaView style={s.container}>
+        <Header
+          title=""
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={s.loadingContainer}>
+          <Text style={{color: theme.colors.textSecondary, ...theme.typography.bodySmall}}>게시글을 찾을 수 없습니다.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleComment = async () => {
+    if (!comment.trim() || submitting) return;
+    if (!state.uid) {
+      Alert.alert('알림', '로그인이 필요합니다.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (replyTo) {
+        await postService.addReply(postId, replyTo.commentId, {
+          user: state.user.nickname,
+          userId: state.uid,
+          avatar: state.user.avatar,
+          text: comment.trim(),
+        });
+        setReplyTo(null);
+      } else {
+        await postService.addComment(postId, {
+          user: state.user.nickname,
+          userId: state.uid,
+          avatar: state.user.avatar,
+          text: comment.trim(),
+        });
+      }
+      setComment('');
+      await fetchComments();
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      Alert.alert('오류', '댓글 작성에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!state.uid) return;
+    dispatch({type: 'TOGGLE_LIKE', postId: post.id});
+    try {
+      await postService.toggleLike(post.id, state.uid);
+    } catch (error) {
+      dispatch({type: 'TOGGLE_LIKE', postId: post.id});
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
+  const handleToggleSave = async () => {
+    if (!state.uid) return;
+    dispatch({type: 'TOGGLE_SAVE', postId: post.id});
+    try {
+      await postService.toggleSave(post.id, state.uid);
+    } catch (error) {
+      dispatch({type: 'TOGGLE_SAVE', postId: post.id});
+      console.error('Failed to toggle save:', error);
+    }
+  };
+
+  const isMyPost = post.user === state.user.nickname || (post as any).userId === state.uid;
 
   const handleEdit = () => {
     navigation.navigate('WritePost', {
@@ -57,9 +216,15 @@ export default function PostDetailScreen({route, navigation}: any) {
       {
         text: '삭제',
         style: 'destructive',
-        onPress: () => {
-          dispatch({type: 'DELETE_POST', postId: post.id});
-          navigation.goBack();
+        onPress: async () => {
+          try {
+            await postService.deletePost(post.id);
+            dispatch({type: 'DELETE_POST', postId: post.id});
+            navigation.goBack();
+          } catch (error) {
+            console.error('Failed to delete post:', error);
+            Alert.alert('오류', '삭제에 실패했습니다.');
+          }
         },
       },
     ]);
@@ -115,106 +280,136 @@ export default function PostDetailScreen({route, navigation}: any) {
       Alert.alert('게시글 옵션', '', [
         {text: '신고하기', style: 'destructive', onPress: handleReport},
         {text: '이 사용자 차단', onPress: handleBlockUser},
-        {text: '공유하기'},
+        {text: '공유하기', onPress: handleShare},
         {text: '취소', style: 'cancel'},
       ]);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       <Header
         title={post.category}
         showBack
         onBack={() => navigation.goBack()}
-        backgroundColor="#fff"
-        light
         rightIcon="⋯"
         onRightPress={handleMore}
       />
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <FlatList
           data={post.comments}
           keyExtractor={item => item.id}
           ListHeaderComponent={() => (
-            <View style={styles.postSection}>
-              <View style={styles.postHeader}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{post.avatar}</Text>
+            <View style={s.postSection}>
+              <View style={s.postHeader}>
+                <View style={s.avatar}>
+                  <Text style={s.avatarText}>{post.avatar}</Text>
                 </View>
-                <View style={styles.postHeaderInfo}>
-                  <Text style={styles.postUser}>{post.user}</Text>
-                  <Text style={styles.postTime}>{post.time}</Text>
+                <View style={s.postHeaderInfo}>
+                  <Text style={s.postUser}>{post.user}</Text>
+                  <Text style={s.postTime}>{post.time}</Text>
                 </View>
                 {post.isAnonymous && (
-                  <View style={styles.anonBadge}>
-                    <Text style={styles.anonBadgeText}>익명</Text>
+                  <View style={s.anonBadge}>
+                    <Text style={s.anonBadgeText}>익명</Text>
                   </View>
                 )}
+                {!post.isAnonymous &&
+                  state.uid &&
+                  (post as any).userId &&
+                  (post as any).userId !== state.uid && (
+                    <TouchableOpacity
+                      style={[
+                        s.followBtn,
+                        isFollowingAuthor && s.followBtnActive,
+                      ]}
+                      onPress={handleToggleFollow}
+                      disabled={followLoading}>
+                      {followLoading ? (
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                      ) : (
+                        <Text
+                          style={[
+                            s.followBtnText,
+                            isFollowingAuthor && s.followBtnTextActive,
+                          ]}>
+                          {isFollowingAuthor ? '팔로잉' : '팔로우'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
               </View>
 
               {post.title ? (
-                <Text style={styles.postTitle}>{post.title}</Text>
+                <Text style={s.postTitle}>{post.title}</Text>
               ) : null}
-              <Text style={styles.postText}>{post.text}</Text>
+              <Text style={s.postText}>{post.text}</Text>
 
-              <View style={styles.postActions}>
+              <View style={s.postActions}>
                 <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() =>
-                    dispatch({type: 'TOGGLE_LIKE', postId: post.id})
-                  }>
+                  style={s.actionBtn}
+                  onPress={handleToggleLike}>
                   <Text
                     style={[
-                      styles.actionText,
-                      post.liked && styles.actionActive,
+                      s.actionText,
+                      post.liked && s.actionActive,
                     ]}>
                     {post.liked ? '♥' : '♡'} {post.likes}
                   </Text>
                 </TouchableOpacity>
-                <View style={styles.actionBtn}>
-                  <Text style={styles.actionText}>
+                <View style={s.actionBtn}>
+                  <Text style={s.actionText}>
                     💬 {post.comments.length}
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() =>
-                    dispatch({type: 'TOGGLE_SAVE', postId: post.id})
-                  }>
+                  style={s.actionBtn}
+                  onPress={handleToggleSave}>
                   <Text
                     style={[
-                      styles.actionText,
-                      post.saved && styles.actionActive,
+                      s.actionText,
+                      post.saved && s.actionActive,
                     ]}>
                     {post.saved ? '★ 저장됨' : '☆ 저장'}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.actionBtn}
+                  onPress={handleShare}>
+                  <Text style={s.actionText}>{'↗ 공유'}</Text>
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.commentsHeader}>
-                <Text style={styles.commentsTitle}>
+              <View style={s.commentsHeader}>
+                <Text style={s.commentsTitle}>
                   댓글 {post.comments.length}
                 </Text>
+                {loadingComments && (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.primary}
+                    style={{marginLeft: 8}}
+                  />
+                )}
               </View>
             </View>
           )}
           renderItem={({item}) => (
             <View>
-              <View style={styles.commentItem}>
-                <View style={styles.commentAvatar}>
-                  <Text style={styles.commentAvatarText}>{item.avatar}</Text>
+              <View style={s.commentItem}>
+                <View style={s.commentAvatar}>
+                  <Text style={s.commentAvatarText}>{item.avatar}</Text>
                 </View>
-                <View style={styles.commentContent}>
-                  <View style={styles.commentHeader}>
-                    <Text style={styles.commentUser}>{item.user}</Text>
-                    <Text style={styles.commentTime}>{item.time}</Text>
+                <View style={s.commentContent}>
+                  <View style={s.commentHeader}>
+                    <Text style={s.commentUser}>{item.user}</Text>
+                    <Text style={s.commentTime}>{item.time}</Text>
                   </View>
-                  <Text style={styles.commentText}>{item.text}</Text>
-                  <View style={styles.commentActions}>
+                  <Text style={s.commentText}>{item.text}</Text>
+                  <View style={s.commentActions}>
                     <TouchableOpacity
                       onPress={() =>
                         dispatch({
@@ -225,8 +420,8 @@ export default function PostDetailScreen({route, navigation}: any) {
                       }>
                       <Text
                         style={[
-                          styles.commentAction,
-                          item.liked && styles.commentActionActive,
+                          s.commentAction,
+                          item.liked && s.commentActionActive,
                         ]}>
                         {item.liked ? '♥' : '♡'} {item.likes}
                       </Text>
@@ -235,71 +430,78 @@ export default function PostDetailScreen({route, navigation}: any) {
                       onPress={() =>
                         setReplyTo({commentId: item.id, userName: item.user})
                       }>
-                      <Text style={styles.commentAction}>답글</Text>
+                      <Text style={s.commentAction}>답글</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               </View>
               {/* Replies */}
               {item.replies.map(reply => (
-                <View key={reply.id} style={styles.replyItem}>
-                  <View style={styles.replyAvatar}>
-                    <Text style={styles.replyAvatarText}>{reply.avatar}</Text>
+                <View key={reply.id} style={s.replyItem}>
+                  <View style={s.replyAvatar}>
+                    <Text style={s.replyAvatarText}>{reply.avatar}</Text>
                   </View>
-                  <View style={styles.commentContent}>
-                    <View style={styles.commentHeader}>
-                      <Text style={styles.commentUser}>{reply.user}</Text>
-                      <Text style={styles.commentTime}>{reply.time}</Text>
+                  <View style={s.commentContent}>
+                    <View style={s.commentHeader}>
+                      <Text style={s.commentUser}>{reply.user}</Text>
+                      <Text style={s.commentTime}>{reply.time}</Text>
                     </View>
-                    <Text style={styles.commentText}>{reply.text}</Text>
+                    <Text style={s.commentText}>{reply.text}</Text>
                   </View>
                 </View>
               ))}
             </View>
           )}
           ListEmptyComponent={
-            <View style={styles.emptyComments}>
-              <Text style={styles.emptyText}>
-                아직 댓글이 없습니다. 첫 댓글을 달아보세요!
-              </Text>
-            </View>
+            loadingComments ? null : (
+              <View style={s.emptyComments}>
+                <Text style={s.emptyText}>
+                  아직 댓글이 없습니다. 첫 댓글을 달아보세요!
+                </Text>
+              </View>
+            )
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
         />
 
         {/* Reply indicator */}
         {replyTo && (
-          <View style={styles.replyIndicator}>
-            <Text style={styles.replyIndicatorText}>
+          <View style={s.replyIndicator}>
+            <Text style={s.replyIndicatorText}>
               {replyTo.userName}님에게 답글 작성 중
             </Text>
             <TouchableOpacity onPress={() => setReplyTo(null)}>
-              <Text style={styles.replyCancel}>✕</Text>
+              <Text style={s.replyCancel}>✕</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Comment Input */}
-        <View style={styles.commentInput}>
+        <View style={s.commentInput}>
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder={
               replyTo
                 ? `${replyTo.userName}님에게 답글...`
                 : '댓글을 입력하세요...'
             }
-            placeholderTextColor="#bbb"
+            placeholderTextColor={theme.colors.textTertiary}
             value={comment}
             onChangeText={setComment}
             onSubmitEditing={handleComment}
             returnKeyType="send"
+            editable={!submitting}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, !comment.trim() && styles.sendBtnDisabled]}
+            style={[s.sendBtn, (!comment.trim() || submitting) && s.sendBtnDisabled]}
             onPress={handleComment}
-            disabled={!comment.trim()}>
-            <Text style={styles.sendText}>등록</Text>
+            disabled={!comment.trim() || submitting}>
+            {submitting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={s.sendText}>등록</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -307,233 +509,256 @@ export default function PostDetailScreen({route, navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  flex: {
-    flex: 1,
-  },
-  listContent: {
-    paddingBottom: 8,
-  },
-  postSection: {
-    padding: 16,
-    borderBottomWidth: 8,
-    borderBottomColor: '#F5F6F8',
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F0F2F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 20,
-  },
-  postHeaderInfo: {
-    flex: 1,
-  },
-  postUser: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  postTime: {
-    fontSize: 12,
-    color: '#aaa',
-    marginTop: 2,
-  },
-  anonBadge: {
-    backgroundColor: '#F0F2F5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  anonBadgeText: {
-    fontSize: 10,
-    color: '#999',
-    fontWeight: '600',
-  },
-  postTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#222',
-    marginBottom: 8,
-  },
-  postText: {
-    fontSize: 15,
-    color: '#444',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  postActions: {
-    flexDirection: 'row',
-    gap: 24,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  actionBtn: {},
-  actionText: {
-    fontSize: 14,
-    color: '#888',
-    fontWeight: '500',
-  },
-  actionActive: {
-    color: '#FF4466',
-  },
-  commentsHeader: {
-    marginTop: 20,
-    paddingTop: 12,
-  },
-  commentsTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  commentItem: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8F8F8',
-  },
-  commentAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F0F2F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  commentAvatarText: {
-    fontSize: 15,
-  },
-  commentContent: {
-    flex: 1,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  commentUser: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#333',
-  },
-  commentTime: {
-    fontSize: 11,
-    color: '#aaa',
-  },
-  commentText: {
-    fontSize: 14,
-    color: '#444',
-    lineHeight: 20,
-  },
-  commentActions: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
-  },
-  commentAction: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '500',
-  },
-  commentActionActive: {
-    color: '#FF4466',
-  },
-  replyItem: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingLeft: 60,
-    backgroundColor: '#FAFBFC',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  replyAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#E8EAF0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  replyAvatarText: {
-    fontSize: 12,
-  },
-  emptyComments: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#bbb',
-  },
-  replyIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F0F4FF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  replyIndicatorText: {
-    fontSize: 13,
-    color: '#2D5BFF',
-    fontWeight: '600',
-  },
-  replyCancel: {
-    fontSize: 16,
-    color: '#999',
-    padding: 4,
-  },
-  commentInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    backgroundColor: '#fff',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    height: 42,
-    backgroundColor: '#F5F6F8',
-    borderRadius: 21,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#333',
-  },
-  sendBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: '#2D5BFF',
-    borderRadius: 21,
-  },
-  sendBtnDisabled: {
-    backgroundColor: '#CCC',
-  },
-  sendText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
+    flex: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listContent: {
+      paddingBottom: theme.spacing.sm,
+    },
+    postSection: {
+      padding: theme.spacing.base,
+      borderBottomWidth: 8,
+      borderBottomColor: theme.colors.background,
+    },
+    postHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: theme.spacing.md,
+    },
+    avatar: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor: theme.colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.md,
+    },
+    avatarText: {
+      fontSize: 20,
+    },
+    postHeaderInfo: {
+      flex: 1,
+    },
+    postUser: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+    },
+    postTime: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+      marginTop: 2,
+    },
+    anonBadge: {
+      backgroundColor: theme.colors.surfaceElevated,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: 3,
+      borderRadius: theme.radius.sm,
+    },
+    anonBadgeText: {
+      fontSize: 10,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
+    },
+    followBtn: {
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: 5,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.primary,
+    },
+    followBtnActive: {
+      backgroundColor: theme.colors.surfaceElevated,
+    },
+    followBtnText: {
+      ...theme.typography.captionSmall,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    followBtnTextActive: {
+      color: theme.colors.textSecondary,
+    },
+    postTitle: {
+      ...theme.typography.h2,
+      fontWeight: '800',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.sm,
+    },
+    postText: {
+      ...theme.typography.body,
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.base,
+    },
+    postActions: {
+      flexDirection: 'row',
+      gap: theme.spacing.xl,
+      paddingTop: theme.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    actionBtn: {},
+    actionText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    actionActive: {
+      color: theme.colors.error,
+    },
+    commentsHeader: {
+      marginTop: theme.spacing.lg,
+      paddingTop: theme.spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    commentsTitle: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+    },
+    commentItem: {
+      flexDirection: 'row',
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    commentAvatar: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: theme.colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.sm,
+    },
+    commentAvatarText: {
+      fontSize: 15,
+    },
+    commentContent: {
+      flex: 1,
+    },
+    commentHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
+    },
+    commentUser: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+    },
+    commentTime: {
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+    },
+    commentText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+    },
+    commentActions: {
+      flexDirection: 'row',
+      gap: theme.spacing.base,
+      marginTop: theme.spacing.sm,
+    },
+    commentAction: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    commentActionActive: {
+      color: theme.colors.error,
+    },
+    replyItem: {
+      flexDirection: 'row',
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+      paddingLeft: 60,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    replyAvatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.sm,
+    },
+    replyAvatarText: {
+      fontSize: 12,
+    },
+    emptyComments: {
+      padding: theme.spacing['2xl'],
+      alignItems: 'center',
+    },
+    emptyText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textTertiary,
+    },
+    replyIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.secondary,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+    },
+    replyIndicatorText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    replyCancel: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      padding: theme.spacing.xs,
+    },
+    commentInput: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
+      gap: theme.spacing.sm,
+    },
+    input: {
+      flex: 1,
+      height: 42,
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.pill,
+      paddingHorizontal: theme.spacing.base,
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+    },
+    sendBtn: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.pill,
+    },
+    sendBtnDisabled: {
+      backgroundColor: theme.colors.textTertiary,
+    },
+    sendText: {
+      ...theme.typography.bodySmall,
+      fontWeight: '700',
+      color: '#fff',
+    },
+  });

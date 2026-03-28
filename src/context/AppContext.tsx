@@ -14,9 +14,6 @@ import {
   INITIAL_POSTS,
   INITIAL_CHATROOMS,
   INITIAL_USER,
-  getNextPostId,
-  getNextCommentId,
-  getNextMessageId,
 } from '../data/mockData';
 import {getUserProfile} from '../services/authService';
 
@@ -47,21 +44,17 @@ type Action =
   | {type: 'SET_USER'; user: UserProfile; uid: string}
   | {type: 'SET_POSTS'; posts: Post[]}
   | {type: 'SET_CHATROOMS'; chatRooms: ChatRoom[]}
+  | {type: 'SET_NOTIFICATIONS'; notifications: Notification[]}
   | {type: 'SET_BLOCKED_USERS'; blockedUsers: string[]}
   | {type: 'SET_FIREBASE_READY'; ready: boolean}
   | {type: 'TOGGLE_LIKE'; postId: string}
   | {type: 'TOGGLE_SAVE'; postId: string}
-  | {
-      type: 'ADD_POST';
-      post: Omit<
-        Post,
-        'id' | 'time' | 'timestamp' | 'likes' | 'comments' | 'saved' | 'liked'
-      >;
-    }
+  | {type: 'ADD_POST'; post: Post}
   | {type: 'UPDATE_POST'; postId: string; updates: {title?: string; text?: string}}
   | {type: 'DELETE_POST'; postId: string}
-  | {type: 'ADD_COMMENT'; postId: string; text: string}
-  | {type: 'ADD_REPLY'; postId: string; commentId: string; text: string}
+  | {type: 'SET_COMMENTS'; postId: string; comments: Comment[]}
+  | {type: 'ADD_COMMENT'; postId: string; comment: Comment}
+  | {type: 'ADD_REPLY'; postId: string; commentId: string; reply: Comment}
   | {type: 'TOGGLE_COMMENT_LIKE'; postId: string; commentId: string}
   | {type: 'SEND_MESSAGE'; chatRoomId: string; text: string}
   | {type: 'MARK_CHAT_READ'; chatRoomId: string}
@@ -76,32 +69,7 @@ const initialState: AppState = {
   user: INITIAL_USER,
   isLoggedIn: false,
   uid: null,
-  notifications: [
-    {
-      id: 'n1',
-      type: 'like',
-      message: '세아이아빠님이 회원님의 글에 좋아요를 눌렀습니다.',
-      time: '10분 전',
-      timestamp: Date.now() - 10 * 60 * 1000,
-      read: false,
-    },
-    {
-      id: 'n2',
-      type: 'comment',
-      message: '캠핑매니아님이 댓글을 달았습니다: "가평 쪽에 좋은 캠핑장 있어요!"',
-      time: '1시간 전',
-      timestamp: Date.now() - 60 * 60 * 1000,
-      read: false,
-    },
-    {
-      id: 'n3',
-      type: 'chat',
-      message: '육아전문가아빠님이 메시지를 보냈습니다.',
-      time: '3시간 전',
-      timestamp: Date.now() - 3 * 60 * 60 * 1000,
-      read: true,
-    },
-  ],
+  notifications: [],
   blockedUsers: [],
   isFirebaseReady: false,
 };
@@ -117,6 +85,9 @@ function appReducer(state: AppState, action: Action): AppState {
         isLoggedIn: false,
         uid: null,
         user: INITIAL_USER,
+        posts: [],
+        chatRooms: [],
+        notifications: [],
       };
 
     case 'SET_USER':
@@ -127,6 +98,9 @@ function appReducer(state: AppState, action: Action): AppState {
 
     case 'SET_CHATROOMS':
       return {...state, chatRooms: action.chatRooms};
+
+    case 'SET_NOTIFICATIONS':
+      return {...state, notifications: action.notifications};
 
     case 'SET_BLOCKED_USERS':
       return {...state, blockedUsers: action.blockedUsers};
@@ -159,21 +133,9 @@ function appReducer(state: AppState, action: Action): AppState {
     }
 
     case 'ADD_POST': {
-      const now = Date.now();
-      const newPost: Post = {
-        ...action.post,
-        id: getNextPostId(),
-        time: '방금',
-        timestamp: now,
-        likes: 0,
-        comments: [],
-        saved: false,
-        liked: false,
-      };
       return {
         ...state,
-        posts: [newPost, ...state.posts],
-        user: {...state.user, postCount: state.user.postCount + 1},
+        posts: [action.post, ...state.posts],
       };
     }
 
@@ -189,33 +151,25 @@ function appReducer(state: AppState, action: Action): AppState {
 
     case 'DELETE_POST': {
       const posts = state.posts.filter(p => p.id !== action.postId);
-      return {
-        ...state,
-        posts,
-        user: {...state.user, postCount: Math.max(0, state.user.postCount - 1)},
-      };
+      return {...state, posts};
+    }
+
+    case 'SET_COMMENTS': {
+      const posts = state.posts.map(p => {
+        if (p.id === action.postId) {
+          return {...p, comments: action.comments};
+        }
+        return p;
+      });
+      return {...state, posts};
     }
 
     case 'ADD_COMMENT': {
-      const now = Date.now();
       const posts = state.posts.map(p => {
         if (p.id === action.postId) {
           return {
             ...p,
-            comments: [
-              ...p.comments,
-              {
-                id: getNextCommentId(),
-                user: state.user.nickname,
-                avatar: state.user.avatar,
-                text: action.text,
-                time: '방금',
-                timestamp: now,
-                likes: 0,
-                liked: false,
-                replies: [],
-              },
-            ],
+            comments: [...p.comments, action.comment],
           };
         }
         return p;
@@ -224,7 +178,6 @@ function appReducer(state: AppState, action: Action): AppState {
     }
 
     case 'ADD_REPLY': {
-      const now = Date.now();
       const posts = state.posts.map(p => {
         if (p.id === action.postId) {
           return {
@@ -233,19 +186,7 @@ function appReducer(state: AppState, action: Action): AppState {
               if (c.id === action.commentId) {
                 return {
                   ...c,
-                  replies: [
-                    ...c.replies,
-                    {
-                      id: getNextCommentId(),
-                      user: state.user.nickname,
-                      avatar: state.user.avatar,
-                      text: action.text,
-                      time: '방금',
-                      timestamp: now,
-                      likes: 0,
-                      liked: false,
-                    },
-                  ],
+                  replies: [...c.replies, action.reply],
                 };
               }
               return c;
@@ -280,26 +221,8 @@ function appReducer(state: AppState, action: Action): AppState {
     }
 
     case 'SEND_MESSAGE': {
-      const now = Date.now();
-      const chatRooms = state.chatRooms.map(cr => {
-        if (cr.id === action.chatRoomId) {
-          return {
-            ...cr,
-            messages: [
-              ...cr.messages,
-              {
-                id: getNextMessageId(),
-                sender: 'me' as const,
-                text: action.text,
-                time: '방금',
-                timestamp: now,
-              },
-            ],
-          };
-        }
-        return cr;
-      });
-      return {...state, chatRooms};
+      // Local optimistic update is no longer needed since we use Firebase realtime
+      return state;
     }
 
     case 'MARK_CHAT_READ': {
@@ -362,11 +285,17 @@ export function AppProvider({children}: {children: ReactNode}) {
               user: profile,
               uid: firebaseUser.uid,
             });
+          } else {
+            // User authenticated but no profile yet (first time)
+            dispatch({type: 'LOGIN', uid: firebaseUser.uid});
           }
         } catch (error) {
-          // Firebase not configured yet — use mock data
-          console.log('Firebase not ready, using mock data');
+          console.log('Firebase profile fetch error:', error);
+          dispatch({type: 'LOGIN', uid: firebaseUser.uid});
         }
+      } else {
+        // No user signed in
+        dispatch({type: 'SET_FIREBASE_READY', ready: true});
       }
       dispatch({type: 'SET_FIREBASE_READY', ready: true});
     });
@@ -384,5 +313,3 @@ export function AppProvider({children}: {children: ReactNode}) {
 export function useApp() {
   return useContext(AppContext);
 }
-
-export type {AppState};

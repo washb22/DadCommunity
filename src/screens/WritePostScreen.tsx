@@ -9,18 +9,27 @@ import {
   Switch,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
+import * as postService from '../services/postService';
 
 const BOARD_OPTIONS = [
   {label: '부부관계', category: '부부관계'},
   {label: '자유게시판', category: '자유'},
   {label: '취미게시판', category: '취미'},
   {label: '육아게시판', category: '육아'},
+  {label: '직장생활', category: '직장생활'},
+  {label: '재테크/부업', category: '재테크/부업'},
+  {label: '건강/운동', category: '건강/운동'},
+  {label: '요리/집안일', category: '요리/집안일'},
 ];
 
 export default function WritePostScreen({navigation, route}: any) {
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
 
   // Edit mode
   const editMode = route.params?.editMode || false;
@@ -37,8 +46,9 @@ export default function WritePostScreen({navigation, route}: any) {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [showBoardPicker, setShowBoardPicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedBoard) {
       Alert.alert('알림', '게시판을 선택해주세요.');
       return;
@@ -51,31 +61,77 @@ export default function WritePostScreen({navigation, route}: any) {
       Alert.alert('알림', '내용을 입력해주세요.');
       return;
     }
+    if (!state.uid) {
+      Alert.alert('알림', '로그인이 필요합니다.');
+      return;
+    }
 
-    if (editMode && editPostId) {
-      dispatch({
-        type: 'UPDATE_POST',
-        postId: editPostId,
-        updates: {title: title.trim(), text: content.trim()},
-      });
-      Alert.alert('완료', '게시글이 수정되었습니다!', [
-        {text: '확인', onPress: () => navigation.goBack()},
-      ]);
-    } else {
-      dispatch({
-        type: 'ADD_POST',
-        post: {
+    setSubmitting(true);
+    try {
+      if (editMode && editPostId) {
+        await postService.updatePost(editPostId, {
+          title: title.trim(),
+          text: content.trim(),
+        });
+        dispatch({
+          type: 'UPDATE_POST',
+          postId: editPostId,
+          updates: {title: title.trim(), text: content.trim()},
+        });
+        Alert.alert('완료', '게시글이 수정되었습니다!', [
+          {text: '확인', onPress: () => navigation.goBack()},
+        ]);
+      } else {
+        let imageUrls: string[] = [];
+        if (images.length > 0) {
+          try {
+            const {uploadPostImages} = require('../services/storageService');
+            const tempId = `temp_${Date.now()}`;
+            imageUrls = await uploadPostImages(tempId, images);
+          } catch (error) {
+            console.error('Image upload failed:', error);
+          }
+        }
+
+        const newPostId = await postService.createPost({
           user: isAnonymous ? '익명의 아빠' : state.user.nickname,
+          userId: state.uid,
           avatar: isAnonymous ? '🧔' : state.user.avatar,
           category: selectedBoard.category,
           title: title.trim(),
           text: content.trim(),
           isAnonymous,
-        },
-      });
-      Alert.alert('완료', '게시글이 등록되었습니다!', [
-        {text: '확인', onPress: () => navigation.goBack()},
-      ]);
+          images: imageUrls,
+        });
+
+        dispatch({
+          type: 'ADD_POST',
+          post: {
+            id: newPostId,
+            user: isAnonymous ? '익명의 아빠' : state.user.nickname,
+            avatar: isAnonymous ? '🧔' : state.user.avatar,
+            category: selectedBoard.category,
+            title: title.trim(),
+            text: content.trim(),
+            isAnonymous,
+            time: '방금',
+            timestamp: Date.now(),
+            likes: 0,
+            comments: [],
+            saved: false,
+            liked: false,
+          },
+        });
+
+        Alert.alert('완료', '게시글이 등록되었습니다!', [
+          {text: '확인', onPress: () => navigation.goBack()},
+        ]);
+      }
+    } catch (error) {
+      console.error('Failed to submit post:', error);
+      Alert.alert('오류', '게시글 등록에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -123,49 +179,56 @@ export default function WritePostScreen({navigation, route}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={s.header}>
         <TouchableOpacity onPress={handleCancel} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Text style={styles.cancelText}>취소</Text>
+          <Text style={s.cancelText}>취소</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{editMode ? '글 수정' : '글 작성'}</Text>
-        <TouchableOpacity onPress={handleSubmit} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Text
-            style={[
-              styles.submitText,
-              (!title.trim() || !content.trim() || !selectedBoard) &&
-                styles.submitTextDisabled,
-            ]}>
-            등록
-          </Text>
+        <Text style={s.headerTitle}>{editMode ? '글 수정' : '글 작성'}</Text>
+        <TouchableOpacity
+          onPress={handleSubmit}
+          disabled={submitting}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          {submitting ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <Text
+              style={[
+                s.submitText,
+                (!title.trim() || !content.trim() || !selectedBoard) &&
+                  s.submitTextDisabled,
+              ]}>
+              등록
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView style={s.content} keyboardShouldPersistTaps="handled">
         {/* Board Selector */}
         <TouchableOpacity
-          style={styles.boardSelector}
+          style={s.boardSelector}
           onPress={() => setShowBoardPicker(!showBoardPicker)}>
           <Text
             style={[
-              styles.boardSelectorText,
-              selectedBoard && styles.boardSelectorTextSelected,
+              s.boardSelectorText,
+              selectedBoard && s.boardSelectorTextSelected,
             ]}>
             📋 {selectedBoard ? selectedBoard.label : '게시판 선택'}
           </Text>
-          <Text style={styles.boardArrow}>{showBoardPicker ? '▲' : '▼'}</Text>
+          <Text style={s.boardArrow}>{showBoardPicker ? '▲' : '▼'}</Text>
         </TouchableOpacity>
 
         {showBoardPicker && (
-          <View style={styles.boardPicker}>
+          <View style={s.boardPicker}>
             {BOARD_OPTIONS.map(board => (
               <TouchableOpacity
                 key={board.category}
                 style={[
-                  styles.boardOption,
+                  s.boardOption,
                   selectedBoard?.category === board.category &&
-                    styles.boardOptionActive,
+                    s.boardOptionActive,
                 ]}
                 onPress={() => {
                   setSelectedBoard(board);
@@ -173,9 +236,9 @@ export default function WritePostScreen({navigation, route}: any) {
                 }}>
                 <Text
                   style={[
-                    styles.boardOptionText,
+                    s.boardOptionText,
                     selectedBoard?.category === board.category &&
-                      styles.boardOptionTextActive,
+                      s.boardOptionTextActive,
                   ]}>
                   {board.label}
                 </Text>
@@ -186,37 +249,39 @@ export default function WritePostScreen({navigation, route}: any) {
 
         {/* Title */}
         <TextInput
-          style={styles.titleInput}
+          style={s.titleInput}
           placeholder="제목을 입력하세요"
-          placeholderTextColor="#ccc"
+          placeholderTextColor={theme.colors.textTertiary}
           value={title}
           onChangeText={setTitle}
           maxLength={50}
+          editable={!submitting}
         />
 
         {/* Character count */}
-        <Text style={styles.charCount}>{title.length}/50</Text>
+        <Text style={s.charCount}>{title.length}/50</Text>
 
         {/* Content */}
         <TextInput
-          style={styles.contentInput}
-          placeholder="내용을 입력하세요...&#10;&#10;다른 아빠들에게 고민을 나누거나&#10;유용한 정보를 공유해보세요."
-          placeholderTextColor="#ccc"
+          style={s.contentInput}
+          placeholder={"내용을 입력하세요...\n\n다른 아빠들에게 고민을 나누거나\n유용한 정보를 공유해보세요."}
+          placeholderTextColor={theme.colors.textTertiary}
           value={content}
           onChangeText={setContent}
           multiline
           textAlignVertical="top"
+          editable={!submitting}
         />
 
         {/* Image Previews */}
         {images.length > 0 && (
-          <View style={styles.imagePreviewRow}>
+          <View style={s.imagePreviewRow}>
             {images.map((uri, idx) => (
-              <View key={idx} style={styles.imagePreview}>
+              <View key={idx} style={s.imagePreview}>
                 <TouchableOpacity
-                  style={styles.imageRemoveBtn}
+                  style={s.imageRemoveBtn}
                   onPress={() => setImages(prev => prev.filter((_, i) => i !== idx))}>
-                  <Text style={styles.imageRemoveText}>✕</Text>
+                  <Text style={s.imageRemoveText}>✕</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -224,204 +289,202 @@ export default function WritePostScreen({navigation, route}: any) {
         )}
 
         {/* Attachments */}
-        <View style={styles.attachments}>
+        <View style={s.attachments}>
           <TouchableOpacity
-            style={styles.attachBtn}
+            style={s.attachBtn}
             activeOpacity={0.7}
             onPress={handleImageAttach}>
-            <Text style={styles.attachText}>📷 사진</Text>
+            <Text style={s.attachText}>📷 사진</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.attachBtn} activeOpacity={0.7}>
-            <Text style={styles.attachText}>🎥 영상</Text>
+          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7}>
+            <Text style={s.attachText}>🎥 영상</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.attachBtn} activeOpacity={0.7}>
-            <Text style={styles.attachText}>📊 투표</Text>
+          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7}>
+            <Text style={s.attachText}>📊 투표</Text>
           </TouchableOpacity>
         </View>
 
         {/* Anonymous Toggle */}
-        <View style={styles.anonToggle}>
+        <View style={s.anonToggle}>
           <Switch
             value={isAnonymous}
             onValueChange={setIsAnonymous}
-            trackColor={{false: '#E0E0E0', true: '#2D5BFF'}}
+            trackColor={{false: theme.colors.border, true: theme.colors.primary}}
             thumbColor="#fff"
           />
-          <Text style={styles.anonText}>익명으로 작성</Text>
-          <Text style={styles.anonDesc}>닉네임이 '익명의 아빠'로 표시됩니다</Text>
+          <Text style={s.anonText}>익명으로 작성</Text>
+          <Text style={s.anonDesc}>닉네임이 '익명의 아빠'로 표시됩니다</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  cancelText: {
-    fontSize: 15,
-    color: '#999',
-    fontWeight: '500',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#333',
-  },
-  submitText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2D5BFF',
-  },
-  submitTextDisabled: {
-    color: '#CCC',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  boardSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F5F6F8',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-  boardSelectorText: {
-    fontSize: 14,
-    color: '#999',
-    fontWeight: '500',
-  },
-  boardSelectorTextSelected: {
-    color: '#333',
-  },
-  boardArrow: {
-    fontSize: 11,
-    color: '#999',
-  },
-  boardPicker: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-  },
-  boardOption: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  boardOptionActive: {
-    backgroundColor: '#EBF0FF',
-  },
-  boardOptionText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  boardOptionTextActive: {
-    color: '#2D5BFF',
-    fontWeight: '700',
-  },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    paddingBottom: 12,
-    marginBottom: 4,
-  },
-  charCount: {
-    textAlign: 'right',
-    fontSize: 11,
-    color: '#ccc',
-    marginBottom: 12,
-  },
-  contentInput: {
-    fontSize: 15,
-    color: '#444',
-    lineHeight: 24,
-    minHeight: 200,
-  },
-  attachments: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  attachBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#F5F6F8',
-    borderRadius: 10,
-  },
-  attachText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
-  anonToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  anonText: {
-    fontSize: 14,
-    color: '#444',
-    fontWeight: '600',
-  },
-  anonDesc: {
-    fontSize: 11,
-    color: '#bbb',
-    flex: 1,
-  },
-  imagePreviewRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-    flexWrap: 'wrap',
-  },
-  imagePreview: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    backgroundColor: '#F0F2F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageRemoveBtn: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#FF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageRemoveText: {
-    fontSize: 10,
-    color: '#fff',
-    fontWeight: '700',
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
+    header: {
+      height: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.base,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    cancelText: {
+      ...theme.typography.body,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    headerTitle: {
+      ...theme.typography.h3,
+      color: theme.colors.textPrimary,
+    },
+    submitText: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    submitTextDisabled: {
+      color: theme.colors.textTertiary,
+    },
+    content: {
+      flex: 1,
+      padding: theme.spacing.base,
+    },
+    boardSelector: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      marginBottom: theme.spacing.base,
+    },
+    boardSelectorText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    boardSelectorTextSelected: {
+      color: theme.colors.textPrimary,
+    },
+    boardArrow: {
+      ...theme.typography.overline,
+      color: theme.colors.textSecondary,
+    },
+    boardPicker: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.md,
+      marginBottom: theme.spacing.base,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    boardOption: {
+      padding: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    boardOptionActive: {
+      backgroundColor: theme.colors.secondary,
+    },
+    boardOptionText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+    },
+    boardOptionTextActive: {
+      color: theme.colors.primary,
+      fontWeight: '700',
+    },
+    titleInput: {
+      ...theme.typography.h2,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      paddingBottom: theme.spacing.md,
+      marginBottom: theme.spacing.xs,
+    },
+    charCount: {
+      textAlign: 'right',
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+      marginBottom: theme.spacing.md,
+    },
+    contentInput: {
+      ...theme.typography.body,
+      color: theme.colors.textPrimary,
+      minHeight: 200,
+    },
+    attachments: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      paddingTop: theme.spacing.base,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    attachBtn: {
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.sm,
+    },
+    attachText: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+    },
+    anonToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.lg,
+      paddingTop: theme.spacing.base,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    anonText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+    },
+    anonDesc: {
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+      flex: 1,
+    },
+    imagePreviewRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.md,
+      flexWrap: 'wrap',
+    },
+    imagePreview: {
+      width: 72,
+      height: 72,
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    imageRemoveBtn: {
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.colors.error,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    imageRemoveText: {
+      fontSize: 10,
+      color: '#fff',
+      fontWeight: '700',
+    },
+  });

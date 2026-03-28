@@ -8,23 +8,25 @@ import {
   SafeAreaView,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import {BOARDS} from '../data/mockData';
 
-function BoardItem({board, postCount, onPress}: {board: any; postCount: number; onPress: () => void}) {
+function BoardItem({board, postCount, onPress, theme}: {board: any; postCount: number; onPress: () => void; theme: any}) {
+  const s = makeStyles(theme);
   return (
-    <TouchableOpacity style={styles.boardItem} onPress={onPress} activeOpacity={0.6}>
-      <View style={[styles.boardIcon, {backgroundColor: board.iconBg}]}>
-        <Text style={styles.boardEmoji}>{board.icon}</Text>
+    <TouchableOpacity style={s.boardItem} onPress={onPress} activeOpacity={0.6}>
+      <View style={[s.boardIcon, {backgroundColor: board.iconBg}]}>
+        <Text style={s.boardEmoji}>{board.icon}</Text>
       </View>
-      <View style={styles.boardInfo}>
-        <Text style={styles.boardName}>{board.name}</Text>
-        <Text style={styles.boardDesc}>{board.desc}</Text>
+      <View style={s.boardInfo}>
+        <Text style={s.boardName}>{board.name}</Text>
+        <Text style={s.boardDesc}>{board.desc}</Text>
       </View>
-      <View style={styles.boardRight}>
-        {board.hasNew && <View style={styles.newDot} />}
-        <Text style={styles.postCount}>{postCount}개</Text>
-        <Text style={styles.arrow}>{'>'}</Text>
+      <View style={s.boardRight}>
+        {board.hasNew && <View style={s.newDot} />}
+        <Text style={s.postCount}>{postCount}개</Text>
+        <Text style={s.arrow}>{'>'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -32,9 +34,11 @@ function BoardItem({board, postCount, onPress}: {board: any; postCount: number; 
 
 export default function BoardListScreen({navigation}: any) {
   const {state} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       <Header
         title="게시판"
         rightIcon="🔍"
@@ -51,6 +55,7 @@ export default function BoardListScreen({navigation}: any) {
             <BoardItem
               board={item}
               postCount={postCount}
+              theme={theme}
               onPress={() => {
                 if (item.category === '공지') return;
                 navigation.navigate('BoardDetail', {
@@ -61,70 +66,71 @@ export default function BoardListScreen({navigation}: any) {
             />
           );
         }}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={s.listContent}
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  listContent: {
-    paddingTop: 4,
-  },
-  boardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  boardIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  boardEmoji: {
-    fontSize: 22,
-  },
-  boardInfo: {
-    flex: 1,
-  },
-  boardName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  boardDesc: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 3,
-  },
-  boardRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  newDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF4444',
-  },
-  postCount: {
-    fontSize: 12,
-    color: '#aaa',
-  },
-  arrow: {
-    fontSize: 16,
-    color: '#ccc',
-    fontWeight: '300',
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
+    listContent: {
+      paddingTop: theme.spacing.xs,
+    },
+    boardItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.base,
+      paddingHorizontal: theme.spacing.base,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    boardIcon: {
+      width: 46,
+      height: 46,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.md,
+    },
+    boardEmoji: {
+      fontSize: 22,
+    },
+    boardInfo: {
+      flex: 1,
+    },
+    boardName: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+    },
+    boardDesc: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textSecondary,
+      marginTop: 3,
+    },
+    boardRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    newDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.colors.error,
+    },
+    postCount: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+    },
+    arrow: {
+      fontSize: 16,
+      color: theme.colors.textTertiary,
+      fontWeight: '300',
+    },
+  });

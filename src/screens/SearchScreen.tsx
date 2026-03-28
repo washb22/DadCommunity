@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 import PostCard from '../components/PostCard';
 import EmptyState from '../components/EmptyState';
 
@@ -17,6 +18,8 @@ const POPULAR_KEYWORDS = ['육아', '캠핑', '부부', '운동', '요리', '재
 
 export default function SearchScreen({navigation}: any) {
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState(false);
 
@@ -33,7 +36,6 @@ export default function SearchScreen({navigation}: any) {
     const q = query.trim();
     if (q) {
       setSearched(true);
-      // 검색 로그 저장 (어드민 통계용)
       firestore()
         .collection('searchLogs')
         .doc(q)
@@ -46,18 +48,18 @@ export default function SearchScreen({navigation}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       {/* Search Bar */}
-      <View style={styles.searchBar}>
+      <View style={s.searchBar}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Text style={styles.back}>{'<'}</Text>
+          <Text style={s.back}>{'<'}</Text>
         </TouchableOpacity>
         <TextInput
-          style={styles.input}
+          style={s.input}
           placeholder="검색어를 입력하세요"
-          placeholderTextColor="#bbb"
+          placeholderTextColor={theme.colors.textTertiary}
           value={query}
           onChangeText={text => {
             setQuery(text);
@@ -73,24 +75,24 @@ export default function SearchScreen({navigation}: any) {
               setQuery('');
               setSearched(false);
             }}>
-            <Text style={styles.clear}>✕</Text>
+            <Text style={s.clear}>✕</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {!searched ? (
-        <View style={styles.suggestSection}>
-          <Text style={styles.suggestTitle}>인기 검색어</Text>
-          <View style={styles.keywords}>
+        <View style={s.suggestSection}>
+          <Text style={s.suggestTitle}>인기 검색어</Text>
+          <View style={s.keywords}>
             {POPULAR_KEYWORDS.map(kw => (
               <TouchableOpacity
                 key={kw}
-                style={styles.kwChip}
+                style={s.kwChip}
                 onPress={() => {
                   setQuery(kw);
                   setSearched(true);
                 }}>
-                <Text style={styles.kwText}>{kw}</Text>
+                <Text style={s.kwText}>{kw}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -115,9 +117,9 @@ export default function SearchScreen({navigation}: any) {
               onSave={() => dispatch({type: 'TOGGLE_SAVE', postId: item.id})}
             />
           )}
-          contentContainerStyle={styles.resultList}
+          contentContainerStyle={s.resultList}
           ListHeaderComponent={
-            <Text style={styles.resultCount}>
+            <Text style={s.resultCount}>
               검색 결과 {results.length}건
             </Text>
           }
@@ -128,78 +130,75 @@ export default function SearchScreen({navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  back: {
-    fontSize: 22,
-    color: '#333',
-    fontWeight: '600',
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    backgroundColor: '#F5F6F8',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#333',
-  },
-  clear: {
-    fontSize: 16,
-    color: '#999',
-    padding: 4,
-  },
-  suggestSection: {
-    padding: 20,
-  },
-  suggestTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 14,
-  },
-  keywords: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  kwChip: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    shadowOffset: {width: 0, height: 1},
-  },
-  kwText: {
-    fontSize: 14,
-    color: '#555',
-    fontWeight: '500',
-  },
-  resultList: {
-    paddingVertical: 8,
-  },
-  resultCount: {
-    fontSize: 13,
-    color: '#999',
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      gap: theme.spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    back: {
+      fontSize: 22,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+    },
+    input: {
+      flex: 1,
+      height: 40,
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.pill,
+      paddingHorizontal: theme.spacing.base,
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+    },
+    clear: {
+      fontSize: 16,
+      color: theme.colors.textSecondary,
+      padding: theme.spacing.xs,
+    },
+    suggestSection: {
+      padding: theme.spacing.lg,
+    },
+    suggestTitle: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.md,
+    },
+    keywords: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    kwChip: {
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.pill,
+      ...theme.shadows.level1,
+    },
+    kwText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    resultList: {
+      paddingVertical: theme.spacing.sm,
+    },
+    resultCount: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
+      paddingHorizontal: theme.spacing.base,
+      paddingBottom: theme.spacing.sm,
+    },
+  });

@@ -9,7 +9,9 @@ import {
   Alert,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
+import {signOut} from '../services/authService';
 
 const MENU_SECTIONS = [
   {
@@ -39,6 +41,8 @@ const MENU_SECTIONS = [
 
 export default function ProfileScreen({navigation}: any) {
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
   const {user} = state;
 
   const handleLogout = () => {
@@ -47,7 +51,12 @@ export default function ProfileScreen({navigation}: any) {
       {
         text: '로그아웃',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch (error) {
+            console.error('Sign out error:', error);
+          }
           dispatch({type: 'LOGOUT'});
           navigation.reset({index: 0, routes: [{name: 'Login'}]});
         },
@@ -56,7 +65,7 @@ export default function ProfileScreen({navigation}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       <Header
         title="마이페이지"
         rightIcon="⚙️"
@@ -65,213 +74,210 @@ export default function ProfileScreen({navigation}: any) {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{user.avatar}</Text>
+        <View style={s.profileCard}>
+          <View style={s.profileTop}>
+            <View style={s.avatar}>
+              <Text style={s.avatarText}>{user.avatar}</Text>
             </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user.nickname}</Text>
-              <Text style={styles.userBio}>{user.bio}</Text>
+            <View style={s.profileInfo}>
+              <Text style={s.userName}>{user.nickname}</Text>
+              <Text style={s.userBio}>{user.bio}</Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={styles.editBtn}
+            style={s.editBtn}
             onPress={() => navigation.navigate('EditProfile')}
             activeOpacity={0.7}>
-            <Text style={styles.editBtnText}>프로필 수정</Text>
+            <Text style={s.editBtnText}>프로필 수정</Text>
           </TouchableOpacity>
 
-          <View style={styles.stats}>
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>{user.postCount}</Text>
-              <Text style={styles.statLabel}>게시글</Text>
+          <View style={s.stats}>
+            <View style={s.stat}>
+              <Text style={s.statNum}>{user.postCount}</Text>
+              <Text style={s.statLabel}>게시글</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>{user.likeCount}</Text>
-              <Text style={styles.statLabel}>받은 좋아요</Text>
+            <View style={s.statDivider} />
+            <View style={s.stat}>
+              <Text style={s.statNum}>{user.likeCount}</Text>
+              <Text style={s.statLabel}>받은 좋아요</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statNum}>{user.saveCount}</Text>
-              <Text style={styles.statLabel}>저장</Text>
+            <View style={s.statDivider} />
+            <View style={s.stat}>
+              <Text style={s.statNum}>{user.saveCount}</Text>
+              <Text style={s.statLabel}>저장</Text>
             </View>
           </View>
         </View>
 
         {/* Menu Sections */}
         {MENU_SECTIONS.map((section, sIdx) => (
-          <View key={sIdx} style={styles.menuSection}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
+          <View key={sIdx} style={s.menuSection}>
+            <Text style={s.sectionTitle}>{section.title}</Text>
             {section.items.map((item, iIdx) => (
               <TouchableOpacity
                 key={iIdx}
-                style={styles.menuItem}
+                style={s.menuItem}
                 onPress={() => {
                   if (item.screen) {
                     navigation.navigate(item.screen);
                   }
                 }}
                 activeOpacity={0.6}>
-                <Text style={styles.menuIcon}>{item.icon}</Text>
-                <Text style={styles.menuLabel}>{item.label}</Text>
-                <Text style={styles.menuArrow}>{'>'}</Text>
+                <Text style={s.menuIcon}>{item.icon}</Text>
+                <Text style={s.menuLabel}>{item.label}</Text>
+                <Text style={s.menuArrow}>{'>'}</Text>
               </TouchableOpacity>
             ))}
           </View>
         ))}
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>로그아웃</Text>
+        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+          <Text style={s.logoutText}>로그아웃</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>버전 1.0.0</Text>
+        <Text style={s.version}>버전 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
-  profileCard: {
-    backgroundColor: '#fff',
-    margin: 12,
-    borderRadius: 16,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
-  },
-  profileTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#F0F2F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 30,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#222',
-  },
-  userBio: {
-    fontSize: 13,
-    color: '#999',
-    marginTop: 4,
-  },
-  editBtn: {
-    alignSelf: 'stretch',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#F0F2F5',
-    marginBottom: 16,
-  },
-  editBtnText: {
-    fontSize: 14,
-    color: '#555',
-    fontWeight: '600',
-  },
-  stats: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  stat: {
-    alignItems: 'center',
-    paddingHorizontal: 28,
-  },
-  statNum: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2D5BFF',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#F0F0F0',
-    alignSelf: 'center',
-  },
-  menuSection: {
-    backgroundColor: '#fff',
-    marginHorizontal: 12,
-    marginBottom: 8,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#AAA',
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
-    letterSpacing: 0.5,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8F8F8',
-  },
-  menuIcon: {
-    fontSize: 18,
-    marginRight: 14,
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: '#333',
-  },
-  menuArrow: {
-    fontSize: 16,
-    color: '#ccc',
-    fontWeight: '300',
-  },
-  logoutBtn: {
-    marginHorizontal: 12,
-    marginTop: 4,
-    backgroundColor: '#fff',
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderRadius: 14,
-  },
-  logoutText: {
-    fontSize: 15,
-    color: '#FF4444',
-    fontWeight: '600',
-  },
-  version: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#ccc',
-    paddingVertical: 20,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    profileCard: {
+      backgroundColor: theme.colors.surface,
+      margin: theme.spacing.md,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      ...theme.shadows.level2,
+    },
+    profileTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: theme.spacing.base,
+    },
+    avatar: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: theme.colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: theme.spacing.base,
+    },
+    avatarText: {
+      fontSize: 30,
+    },
+    profileInfo: {
+      flex: 1,
+    },
+    userName: {
+      ...theme.typography.h2,
+      fontWeight: '800',
+      color: theme.colors.textPrimary,
+    },
+    userBio: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.xs,
+    },
+    editBtn: {
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.surfaceElevated,
+      marginBottom: theme.spacing.base,
+    },
+    editBtnText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
+    },
+    stats: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    stat: {
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.xl,
+    },
+    statNum: {
+      ...theme.typography.h2,
+      fontWeight: '800',
+      color: theme.colors.primary,
+    },
+    statLabel: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.xs,
+    },
+    statDivider: {
+      width: 1,
+      height: 30,
+      backgroundColor: theme.colors.border,
+      alignSelf: 'center',
+    },
+    menuSection: {
+      backgroundColor: theme.colors.surface,
+      marginHorizontal: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+      borderRadius: theme.radius.md,
+      overflow: 'hidden',
+    },
+    sectionTitle: {
+      ...theme.typography.captionSmall,
+      fontWeight: '700',
+      color: theme.colors.textTertiary,
+      paddingHorizontal: theme.spacing.base,
+      paddingTop: theme.spacing.md,
+      paddingBottom: 6,
+      letterSpacing: 0.5,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.base,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    menuIcon: {
+      fontSize: 18,
+      marginRight: theme.spacing.md,
+    },
+    menuLabel: {
+      flex: 1,
+      ...theme.typography.body,
+      color: theme.colors.textPrimary,
+    },
+    menuArrow: {
+      fontSize: 16,
+      color: theme.colors.textTertiary,
+      fontWeight: '300',
+    },
+    logoutBtn: {
+      marginHorizontal: theme.spacing.md,
+      marginTop: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
+      paddingVertical: theme.spacing.base,
+      alignItems: 'center',
+      borderRadius: theme.radius.md,
+    },
+    logoutText: {
+      ...theme.typography.body,
+      color: theme.colors.error,
+      fontWeight: '600',
+    },
+    version: {
+      textAlign: 'center',
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+      paddingVertical: theme.spacing.lg,
+    },
+  });

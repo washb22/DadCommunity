@@ -3,9 +3,12 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {Text, View, StyleSheet, BackHandler} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import {useTheme, Theme} from '../theme';
 
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeFeedScreen from '../screens/HomeFeedScreen';
 import BoardListScreen from '../screens/BoardListScreen';
 import BoardDetailScreen from '../screens/BoardDetailScreen';
@@ -25,35 +28,31 @@ import BlockListScreen from '../screens/BlockListScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function TabIcon({label, focused}: {label: string; focused: boolean}) {
-  const icons: Record<string, string> = {
-    홈: '🏠',
-    게시판: '📋',
-    채팅: '💬',
-    마이: '👤',
-  };
-  return (
-    <View style={styles.tabIcon}>
-      <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>
-        {icons[label] || '📌'}
-      </Text>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
-        {label}
-      </Text>
-    </View>
-  );
-}
+const TAB_ICONS: Record<string, {focused: string; unfocused: string}> = {
+  '\uD648': {focused: 'home', unfocused: 'home-outline'},
+  '\uAC8C\uC2DC\uD310': {focused: 'grid', unfocused: 'grid-outline'},
+  '\uCC44\uD305': {focused: 'chatbubbles', unfocused: 'chatbubbles-outline'},
+  '\uB9C8\uC774': {focused: 'person', unfocused: 'person-outline'},
+};
 
 function MainTabs() {
+  const theme = useTheme();
+  const s = makeStyles(theme);
+
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
-        tabBarIcon: ({focused}) => (
-          <TabIcon label={route.name} focused={focused} />
-        ),
+        tabBarShowLabel: true,
+        tabBarStyle: s.tabBar,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textTertiary,
+        tabBarLabelStyle: s.tabLabel,
+        tabBarIcon: ({focused, color, size}) => {
+          const icons = TAB_ICONS[route.name];
+          const iconName = focused ? icons?.focused : icons?.unfocused;
+          return <Icon name={iconName || 'ellipse-outline'} size={22} color={color} />;
+        },
       })}>
       <Tab.Screen name="홈" component={HomeFeedScreen} />
       <Tab.Screen name="게시판" component={BoardListScreen} />
@@ -74,6 +73,7 @@ export default function AppNavigator() {
         initialRouteName="Splash">
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen
           name="WritePost"
@@ -99,39 +99,19 @@ export default function AppNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBar: {
-    height: 64,
-    paddingBottom: 10,
-    paddingTop: 8,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: {width: 0, height: -2},
-  },
-  tabIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabEmoji: {
-    fontSize: 22,
-    opacity: 0.5,
-  },
-  tabEmojiActive: {
-    opacity: 1,
-  },
-  tabLabel: {
-    fontSize: 10,
-    color: '#BBB',
-    marginTop: 3,
-    fontWeight: '600',
-  },
-  tabLabelActive: {
-    color: '#2D5BFF',
-    fontWeight: '700',
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    tabBar: {
+      height: 64,
+      paddingBottom: 10,
+      paddingTop: 8,
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      ...theme.shadows.level2,
+    },
+    tabLabel: {
+      ...theme.typography.overline,
+      marginTop: 2,
+    },
+  });

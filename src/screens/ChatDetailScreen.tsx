@@ -9,101 +9,176 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
+import {
+  subscribeToMessages,
+  sendMessage,
+  markChatRead,
+} from '../services/chatService';
+import {ChatMessage, getRelativeTime} from '../data/mockData';
 
 export default function ChatDetailScreen({route, navigation}: any) {
   const {chatRoomId} = route.params;
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
   const [text, setText] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   const chatRoom = state.chatRooms.find(cr => cr.id === chatRoomId);
 
+  // Subscribe to realtime messages
   useEffect(() => {
-    if (chatRoom && chatRoom.unread > 0) {
+    const unsubscribe = subscribeToMessages(chatRoomId, msgs => {
+      const enrichedMsgs: ChatMessage[] = msgs.map(m => {
+        const msgData = m as any;
+        const ts =
+          m.timestamp && typeof (m.timestamp as any).toDate === 'function'
+            ? (m.timestamp as any).toDate().getTime()
+            : typeof m.timestamp === 'number'
+            ? m.timestamp
+            : Date.now();
+        return {
+          ...m,
+          time: getRelativeTime(ts),
+          timestamp: ts,
+          sender: msgData.senderId === state.uid ? 'me' : 'other',
+        } as ChatMessage;
+      });
+      setMessages(enrichedMsgs);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [chatRoomId, state.uid]);
+
+  // Mark chat as read
+  useEffect(() => {
+    if (state.uid && chatRoom && chatRoom.unread > 0) {
+      markChatRead(chatRoomId, state.uid).catch(err =>
+        console.error('Failed to mark chat read:', err),
+      );
       dispatch({type: 'MARK_CHAT_READ', chatRoomId});
     }
-  }, [chatRoomId, chatRoom, dispatch]);
+  }, [chatRoomId, chatRoom, state.uid, dispatch]);
 
-  if (!chatRoom) return null;
+  const chatUser = chatRoom?.user || '채팅';
+  const chatAvatar = chatRoom?.avatar || '🧔';
 
-  const handleSend = () => {
-    if (!text.trim()) return;
-    dispatch({type: 'SEND_MESSAGE', chatRoomId, text: text.trim()});
-    setText('');
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({animated: true});
-    }, 100);
+  const handleSend = async () => {
+    if (!text.trim() || sending || !state.uid) return;
+
+    setSending(true);
+    try {
+      await sendMessage(chatRoomId, {
+        sender: state.user.nickname,
+        senderId: state.uid,
+        text: text.trim(),
+      });
+      setText('');
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({animated: true});
+      }, 100);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setSending(false);
+    }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={s.container}>
+        <Header
+          title={chatUser}
+          showBack
+          onBack={() => navigation.goBack()}
+        />
+        <View style={s.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       <Header
-        title={chatRoom.user}
+        title={chatUser}
         showBack
         onBack={() => navigation.goBack()}
       />
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <FlatList
           ref={flatListRef}
-          data={chatRoom.messages}
+          data={messages}
           keyExtractor={item => item.id}
           renderItem={({item}) => (
             <View
               style={[
-                styles.msgRow,
-                item.sender === 'me' ? styles.msgRowMe : styles.msgRowOther,
+                s.msgRow,
+                item.sender === 'me' ? s.msgRowMe : s.msgRowOther,
               ]}>
               {item.sender === 'other' && (
-                <View style={styles.otherAvatar}>
-                  <Text style={styles.otherAvatarText}>{chatRoom.avatar}</Text>
+                <View style={s.otherAvatar}>
+                  <Text style={s.otherAvatarText}>{chatAvatar}</Text>
                 </View>
               )}
               <View
                 style={[
-                  styles.bubble,
-                  item.sender === 'me' ? styles.bubbleMe : styles.bubbleOther,
+                  s.bubble,
+                  item.sender === 'me' ? s.bubbleMe : s.bubbleOther,
                 ]}>
                 <Text
                   style={[
-                    styles.bubbleText,
+                    s.bubbleText,
                     item.sender === 'me'
-                      ? styles.bubbleTextMe
-                      : styles.bubbleTextOther,
+                      ? s.bubbleTextMe
+                      : s.bubbleTextOther,
                   ]}>
                   {item.text}
                 </Text>
               </View>
-              <Text style={styles.msgTime}>{item.time}</Text>
+              <Text style={s.msgTime}>{item.time}</Text>
             </View>
           )}
-          contentContainerStyle={styles.msgList}
+          contentContainerStyle={s.msgList}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() =>
             flatListRef.current?.scrollToEnd({animated: false})
           }
         />
 
-        <View style={styles.inputBar}>
+        <View style={s.inputBar}>
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder="메시지를 입력하세요..."
-            placeholderTextColor="#bbb"
+            placeholderTextColor={theme.colors.textTertiary}
             value={text}
             onChangeText={setText}
             onSubmitEditing={handleSend}
             returnKeyType="send"
+            editable={!sending}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
+            style={[s.sendBtn, (!text.trim() || sending) && s.sendBtnDisabled]}
             onPress={handleSend}
-            disabled={!text.trim()}>
-            <Text style={styles.sendText}>전송</Text>
+            disabled={!text.trim() || sending}>
+            {sending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={s.sendText}>전송</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -111,100 +186,105 @@ export default function ChatDetailScreen({route, navigation}: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F6F8',
-  },
-  flex: {
-    flex: 1,
-  },
-  msgList: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  msgRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: 12,
-    gap: 6,
-  },
-  msgRowMe: {
-    justifyContent: 'flex-end',
-  },
-  msgRowOther: {
-    justifyContent: 'flex-start',
-  },
-  otherAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E8EAF0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  otherAvatarText: {
-    fontSize: 16,
-  },
-  bubble: {
-    maxWidth: '70%',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 18,
-  },
-  bubbleMe: {
-    backgroundColor: '#2D5BFF',
-    borderBottomRightRadius: 4,
-  },
-  bubbleOther: {
-    backgroundColor: '#fff',
-    borderBottomLeftRadius: 4,
-  },
-  bubbleText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  bubbleTextMe: {
-    color: '#fff',
-  },
-  bubbleTextOther: {
-    color: '#333',
-  },
-  msgTime: {
-    fontSize: 10,
-    color: '#bbb',
-  },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    height: 42,
-    backgroundColor: '#F5F6F8',
-    borderRadius: 21,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#333',
-  },
-  sendBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: '#2D5BFF',
-    borderRadius: 21,
-  },
-  sendBtnDisabled: {
-    backgroundColor: '#CCC',
-  },
-  sendText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    flex: {
+      flex: 1,
+    },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    msgList: {
+      padding: theme.spacing.base,
+      paddingBottom: theme.spacing.sm,
+    },
+    msgRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      marginBottom: theme.spacing.md,
+      gap: 6,
+    },
+    msgRowMe: {
+      justifyContent: 'flex-end',
+    },
+    msgRowOther: {
+      justifyContent: 'flex-start',
+    },
+    otherAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.colors.secondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    otherAvatarText: {
+      fontSize: 16,
+    },
+    bubble: {
+      maxWidth: '70%',
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.lg,
+    },
+    bubbleMe: {
+      backgroundColor: theme.colors.primary,
+      borderBottomRightRadius: theme.spacing.xs,
+    },
+    bubbleOther: {
+      backgroundColor: theme.colors.surface,
+      borderBottomLeftRadius: theme.spacing.xs,
+    },
+    bubbleText: {
+      ...theme.typography.bodySmall,
+    },
+    bubbleTextMe: {
+      color: '#fff',
+    },
+    bubbleTextOther: {
+      color: theme.colors.textPrimary,
+    },
+    msgTime: {
+      fontSize: 10,
+      color: theme.colors.textTertiary,
+    },
+    inputBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+      gap: theme.spacing.sm,
+    },
+    input: {
+      flex: 1,
+      height: 42,
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.pill,
+      paddingHorizontal: theme.spacing.base,
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+    },
+    sendBtn: {
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.pill,
+    },
+    sendBtnDisabled: {
+      backgroundColor: theme.colors.textTertiary,
+    },
+    sendText: {
+      ...theme.typography.bodySmall,
+      fontWeight: '700',
+      color: '#fff',
+    },
+  });

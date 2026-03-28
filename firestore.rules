@@ -11,7 +11,13 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow update: if request.auth != null && (
+        request.auth.uid == userId || isAdmin()
+      ) && (
+        // Allow updating profile fields including onboarding data
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'createdAt']) ||
+        isAdmin()
+      );
     }
 
     // Posts
@@ -48,9 +54,20 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid in resource.data.members;
 
       match /messages/{messageId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null;
+        allow read: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.members;
+        allow create: if request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(roomId)).data.members;
       }
+    }
+
+    // Follows
+    match /follows/{followId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.followerId == request.auth.uid;
+      allow delete: if request.auth != null &&
+        resource.data.followerId == request.auth.uid;
     }
 
     // Reports - 생성은 모든 유저, 읽기/처리는 관리자만

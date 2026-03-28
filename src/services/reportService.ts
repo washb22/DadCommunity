@@ -54,5 +54,5 @@ export async function isBlocked(
   const doc = await blocksRef
     .doc(`${currentUserId}_${targetUserId}`)
     .get();
-  return doc.exists;
+  return doc.exists as unknown as boolean;
 }

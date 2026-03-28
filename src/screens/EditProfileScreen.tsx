@@ -10,11 +10,14 @@ import {
   Alert,
 } from 'react-native';
 import {useApp} from '../context/AppContext';
+import {useTheme, Theme} from '../theme';
 
 const AVATARS = ['🧔', '👨', '👴', '🧑', '👨‍🦳', '👨‍🍳', '💪', '🏕️', '⛺', '🎮', '🎸', '📚'];
 
 export default function EditProfileScreen({navigation}: any) {
   const {state, dispatch} = useApp();
+  const theme = useTheme();
+  const s = makeStyles(theme);
   const [nickname, setNickname] = useState(state.user.nickname);
   const [bio, setBio] = useState(state.user.bio);
   const [avatar, setAvatar] = useState(state.user.avatar);
@@ -34,22 +37,22 @@ export default function EditProfileScreen({navigation}: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.container}>
+      <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>취소</Text>
+          <Text style={s.cancelText}>취소</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>프로필 수정</Text>
+        <Text style={s.headerTitle}>프로필 수정</Text>
         <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.saveText}>저장</Text>
+          <Text style={s.saveText}>저장</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={s.content}>
         {/* Avatar */}
-        <View style={styles.avatarSection}>
+        <View style={s.avatarSection}>
           <TouchableOpacity
-            style={styles.currentAvatar}
+            style={s.currentAvatar}
             onPress={() => {
               Alert.alert('프로필 사진', '프로필 사진을 변경하시겠습니까?', [
                 {
@@ -67,176 +70,176 @@ export default function EditProfileScreen({navigation}: any) {
                 {text: '아이콘 선택하기', style: 'cancel'},
               ]);
             }}>
-            <Text style={styles.currentAvatarText}>{avatar}</Text>
-            <View style={styles.cameraIcon}>
-              <Text style={styles.cameraIconText}>📷</Text>
+            <Text style={s.currentAvatarText}>{avatar}</Text>
+            <View style={s.cameraIcon}>
+              <Text style={s.cameraIconText}>📷</Text>
             </View>
           </TouchableOpacity>
-          <Text style={styles.avatarLabel}>프로필 아이콘 선택</Text>
-          <View style={styles.avatarGrid}>
+          <Text style={s.avatarLabel}>프로필 아이콘 선택</Text>
+          <View style={s.avatarGrid}>
             {AVATARS.map(a => (
               <TouchableOpacity
                 key={a}
                 style={[
-                  styles.avatarOption,
-                  avatar === a && styles.avatarOptionActive,
+                  s.avatarOption,
+                  avatar === a && s.avatarOptionActive,
                 ]}
                 onPress={() => setAvatar(a)}>
-                <Text style={styles.avatarOptionText}>{a}</Text>
+                <Text style={s.avatarOptionText}>{a}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Nickname */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>닉네임</Text>
+        <View style={s.field}>
+          <Text style={s.fieldLabel}>닉네임</Text>
           <TextInput
-            style={styles.fieldInput}
+            style={s.fieldInput}
             value={nickname}
             onChangeText={setNickname}
             maxLength={12}
             placeholder="닉네임을 입력하세요"
-            placeholderTextColor="#ccc"
+            placeholderTextColor={theme.colors.textTertiary}
           />
-          <Text style={styles.charCount}>{nickname.length}/12</Text>
+          <Text style={s.charCount}>{nickname.length}/12</Text>
         </View>
 
         {/* Bio */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>자기소개</Text>
+        <View style={s.field}>
+          <Text style={s.fieldLabel}>자기소개</Text>
           <TextInput
-            style={[styles.fieldInput, styles.bioInput]}
+            style={[s.fieldInput, s.bioInput]}
             value={bio}
             onChangeText={setBio}
             maxLength={50}
             placeholder="간단한 자기소개를 입력하세요"
-            placeholderTextColor="#ccc"
+            placeholderTextColor={theme.colors.textTertiary}
             multiline
           />
-          <Text style={styles.charCount}>{bio.length}/50</Text>
+          <Text style={s.charCount}>{bio.length}/50</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  cancelText: {
-    fontSize: 15,
-    color: '#999',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#333',
-  },
-  saveText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2D5BFF',
-  },
-  content: {
-    padding: 20,
-  },
-  avatarSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  currentAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F0F2F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  currentAvatarText: {
-    fontSize: 36,
-  },
-  cameraIcon: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#2D5BFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  cameraIconText: {
-    fontSize: 14,
-  },
-  avatarLabel: {
-    fontSize: 13,
-    color: '#999',
-    marginBottom: 14,
-  },
-  avatarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  avatarOption: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#F5F6F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarOptionActive: {
-    backgroundColor: '#EBF0FF',
-    borderWidth: 2,
-    borderColor: '#2D5BFF',
-  },
-  avatarOptionText: {
-    fontSize: 22,
-  },
-  field: {
-    marginBottom: 24,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#666',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  fieldInput: {
-    backgroundColor: '#F5F6F8',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#333',
-  },
-  bioInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  charCount: {
-    textAlign: 'right',
-    fontSize: 11,
-    color: '#ccc',
-    marginTop: 4,
-  },
-});
+const makeStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+    },
+    header: {
+      height: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: theme.spacing.base,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    cancelText: {
+      ...theme.typography.body,
+      color: theme.colors.textSecondary,
+    },
+    headerTitle: {
+      ...theme.typography.h3,
+      color: theme.colors.textPrimary,
+    },
+    saveText: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    content: {
+      padding: theme.spacing.lg,
+    },
+    avatarSection: {
+      alignItems: 'center',
+      marginBottom: theme.spacing['2xl'],
+    },
+    currentAvatar: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: theme.colors.surfaceElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: theme.spacing.md,
+    },
+    currentAvatarText: {
+      fontSize: 36,
+    },
+    cameraIcon: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: theme.colors.surface,
+    },
+    cameraIconText: {
+      fontSize: 14,
+    },
+    avatarLabel: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.md,
+    },
+    avatarGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+    },
+    avatarOption: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: theme.colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarOptionActive: {
+      backgroundColor: theme.colors.secondary,
+      borderWidth: 2,
+      borderColor: theme.colors.primary,
+    },
+    avatarOptionText: {
+      fontSize: 22,
+    },
+    field: {
+      marginBottom: theme.spacing.xl,
+    },
+    fieldLabel: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.sm,
+      letterSpacing: 0.3,
+    },
+    fieldInput: {
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      ...theme.typography.body,
+      color: theme.colors.textPrimary,
+    },
+    bioInput: {
+      minHeight: 80,
+      textAlignVertical: 'top',
+    },
+    charCount: {
+      textAlign: 'right',
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+      marginTop: theme.spacing.xs,
+    },
+  });
