@@ -19,20 +19,6 @@ export async function signInWithGoogle() {
   return userCredential.user;
 }
 
-// 카카오/네이버는 Custom Token 방식으로 구현
-// 서버에서 카카오/네이버 인증 후 Firebase Custom Token을 발급받아 사용
-export async function signInWithCustomToken(token: string) {
-  const userCredential = await auth().signInWithCustomToken(token);
-  await ensureUserProfile(userCredential.user);
-  return userCredential.user;
-}
-
-export async function signInAnonymously() {
-  const userCredential = await auth().signInAnonymously();
-  await ensureUserProfile(userCredential.user);
-  return userCredential.user;
-}
-
 export async function signOut() {
   try {
     await GoogleSignin.signOut();

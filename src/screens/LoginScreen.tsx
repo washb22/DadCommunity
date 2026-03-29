@@ -12,10 +12,7 @@ import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {
-  signInWithGoogle,
-  signInAnonymously,
-} from '../services/authService';
+import {signInWithGoogle} from '../services/authService';
 import type {LoginScreenProps} from '../navigation/types';
 
 export default function LoginScreen({navigation}: LoginScreenProps) {
@@ -70,52 +67,6 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
     }
   };
 
-  const handleKakaoLogin = () => {
-    Alert.alert(
-      '카카오 로그인',
-      '카카오 로그인은 서버 연동 후 사용 가능합니다.\n둘러보기로 이동합니다.',
-      [
-        {
-          text: '확인',
-          onPress: () => {
-            dispatch({type: 'LOGIN'});
-            navigation.replace('Main');
-          },
-        },
-      ],
-    );
-  };
-
-  const handleNaverLogin = () => {
-    Alert.alert(
-      '네이버 로그인',
-      '네이버 로그인은 서버 연동 후 사용 가능합니다.\n둘러보기로 이동합니다.',
-      [
-        {
-          text: '확인',
-          onPress: () => {
-            dispatch({type: 'LOGIN'});
-            navigation.replace('Main');
-          },
-        },
-      ],
-    );
-  };
-
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    try {
-      const user = await signInAnonymously();
-      dispatch({type: 'LOGIN', uid: user.uid});
-      await navigateAfterLogin(user.uid);
-    } catch (error: any) {
-      console.error('Anonymous login failed:', error.message);
-      Alert.alert('로그인 실패', '둘러보기 로그인에 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <View style={[s.container, s.loadingContainer]}>
@@ -141,29 +92,15 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
           {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
         ]}>
         <TouchableOpacity
-          style={[s.loginBtn, s.kakao]}
-          onPress={handleKakaoLogin}
-          activeOpacity={0.8}>
-          <Text style={s.kakaoText}><Icon name="chatbubble" size={18} color={s.kakaoText.color} />  카카오로 시작하기</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[s.loginBtn, s.naver]}
-          onPress={handleNaverLogin}
-          activeOpacity={0.8}>
-          <Text style={s.naverText}>N  네이버로 시작하기</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[s.loginBtn, s.google]}
           onPress={handleGoogleLogin}
           activeOpacity={0.8}>
           <Text style={s.googleText}>G  구글로 시작하기</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleGuestLogin}>
-          <Text style={s.skipText}>둘러보기</Text>
-        </TouchableOpacity>
+        <Text style={s.footerText}>
+          3초만에 가입하고 아빠들의 이야기에 참여하세요
+        </Text>
       </Animated.View>
     </View>
   );
@@ -223,22 +160,6 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    kakao: {
-      backgroundColor: '#FEE500',
-    },
-    kakaoText: {
-      ...theme.typography.body,
-      fontWeight: '700',
-      color: '#3C1E1E',
-    },
-    naver: {
-      backgroundColor: '#03C75A',
-    },
-    naverText: {
-      ...theme.typography.body,
-      fontWeight: '700',
-      color: theme.colors.onPrimary,
-    },
     google: {
       backgroundColor: theme.colors.surface,
       borderWidth: 1.5,
@@ -249,11 +170,10 @@ const makeStyles = (theme: Theme) =>
       fontWeight: '700',
       color: theme.colors.textPrimary,
     },
-    skipText: {
+    footerText: {
       textAlign: 'center',
       ...theme.typography.caption,
-      color: theme.colors.textSecondary,
-      textDecorationLine: 'underline',
-      marginTop: theme.spacing.sm,
+      color: theme.colors.textTertiary,
+      marginTop: theme.spacing.xs,
     },
   });

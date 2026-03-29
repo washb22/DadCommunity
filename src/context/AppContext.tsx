@@ -289,6 +289,14 @@ export function AppProvider({children}: {children: ReactNode}) {
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged(async (firebaseUser: FirebaseAuthTypes.User | null) => {
       if (firebaseUser) {
+        // Reject anonymous users - force them to sign in with Google
+        if (firebaseUser.isAnonymous) {
+          try {
+            await auth().signOut();
+          } catch {}
+          dispatch({type: 'SET_FIREBASE_READY', ready: true});
+          return;
+        }
         try {
           const profile = await getUserProfile(firebaseUser.uid);
           if (profile) {
