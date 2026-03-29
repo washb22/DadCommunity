@@ -10,9 +10,10 @@ interface PostCardProps {
   onPress: () => void;
   onLike: () => void;
   onSave: () => void;
+  onEmpathize?: () => void;
 }
 
-export default function PostCard({post, onPress, onLike, onSave}: PostCardProps) {
+function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
   const theme = useTheme();
   const s = makeStyles(theme);
 
@@ -86,6 +87,19 @@ export default function PostCard({post, onPress, onLike, onSave}: PostCardProps)
             {' '}{post.comments.length}
           </Text>
         </View>
+        <TouchableOpacity
+          style={s.actionBtn}
+          onPress={onEmpathize}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Icon
+            name={post.empathized ? 'hand-left' : 'hand-left-outline'}
+            size={18}
+            color={post.empathized ? theme.colors.primary : theme.colors.textTertiary}
+          />
+          <Text style={[s.actionText, post.empathized && {color: theme.colors.primary}]}>
+            {' '}{post.empathyCount || 0}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={s.actionBtn}
           onPress={onSave}
@@ -176,7 +190,7 @@ const makeStyles = (theme: Theme) =>
     },
     actions: {
       flexDirection: 'row',
-      gap: theme.spacing.xl,
+      gap: theme.spacing.lg,
       paddingTop: theme.spacing.sm,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
@@ -190,3 +204,5 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textTertiary,
     },
   });
+
+export default React.memo(PostCard);

@@ -41,8 +41,8 @@ const makeStyles = (theme: Theme) =>
     },
     chip: {
       backgroundColor: theme.colors.surfaceElevated,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.pill,
     },
     chipText: {

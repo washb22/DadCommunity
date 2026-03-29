@@ -302,10 +302,10 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
             onPress={handleImageAttach}>
             <View style={s.attachContent}><Icon name="camera-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 사진</Text></View>
           </TouchableOpacity>
-          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7}>
+          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7} onPress={() => Alert.alert('알림', '영상 첨부 기능은 준비 중입니다.')}>
             <View style={s.attachContent}><Icon name="videocam-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 영상</Text></View>
           </TouchableOpacity>
-          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7}>
+          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7} onPress={() => Alert.alert('알림', '투표 기능은 준비 중입니다.')}>
             <View style={s.attachContent}><Icon name="bar-chart-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 투표</Text></View>
           </TouchableOpacity>
         </View>

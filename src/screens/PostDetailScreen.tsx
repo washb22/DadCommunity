@@ -23,7 +23,7 @@ import AgeBadge from '../components/AgeBadge';
 import * as postService from '../services/postService';
 import * as followService from '../services/followService';
 import {getRelativeTime} from '../data/mockData';
-import {Comment} from '../data/mockData';
+import {Comment, Post} from '../data/mockData';
 import * as reportService from '../services/reportService';
 import type {PostDetailScreenProps} from '../navigation/types';
 
@@ -39,8 +39,43 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
 
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [fetchedPost, setFetchedPost] = useState<Post | null>(null);
+  const [loadingPost, setLoadingPost] = useState(false);
 
-  const post = state.posts.find(p => p.id === postId);
+  const statePost = state.posts.find(p => p.id === postId);
+  const post = statePost || fetchedPost;
+
+  // Fetch post from Firestore if not found in local state (e.g. deep link)
+  useEffect(() => {
+    if (!statePost && !fetchedPost && !loadingPost) {
+      setLoadingPost(true);
+      postService.fetchPostById(postId).then(p => {
+        if (p) {
+          const ts =
+            p.timestamp && typeof (p.timestamp as any).toDate === 'function'
+              ? (p.timestamp as any).toDate().getTime()
+              : typeof p.timestamp === 'number'
+              ? p.timestamp
+              : Date.now();
+          setFetchedPost({
+            ...p,
+            time: getRelativeTime(ts),
+            timestamp: ts,
+            liked: Array.isArray(p.likedBy) ? p.likedBy.includes(state.uid || '') : false,
+            saved: Array.isArray(p.savedBy) ? p.savedBy.includes(state.uid || '') : false,
+            empathized: Array.isArray(p.empathizedBy) ? p.empathizedBy.includes(state.uid || '') : false,
+            empathyCount: p.empathyCount || 0,
+            authorAgeGroup: p.authorAgeGroup,
+            comments: p.comments || [],
+          });
+        }
+      }).catch(err => {
+        console.error('Failed to fetch post:', err);
+      }).finally(() => {
+        setLoadingPost(false);
+      });
+    }
+  }, [statePost, fetchedPost, loadingPost, postId, state.uid]);
 
   // Check follow status on mount
   useEffect(() => {
@@ -141,7 +176,11 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
           onBack={() => navigation.goBack()}
         />
         <View style={s.loadingContainer}>
-          <Text style={{color: theme.colors.textSecondary, ...theme.typography.bodySmall}}>게시글을 찾을 수 없습니다.</Text>
+          {loadingPost ? (
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          ) : (
+            <Text style={{color: theme.colors.textSecondary, ...theme.typography.bodySmall}}>게시글을 찾을 수 없습니다.</Text>
+          )}
         </View>
       </SafeAreaView>
     );
@@ -201,6 +240,17 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
     } catch (error) {
       dispatch({type: 'TOGGLE_SAVE', postId: post.id});
       console.error('Failed to toggle save:', error);
+    }
+  };
+
+  const handleToggleEmpathy = async () => {
+    if (!state.uid) return;
+    dispatch({type: 'TOGGLE_EMPATHY', postId: post.id});
+    try {
+      await postService.toggleEmpathy(post.id, state.uid);
+    } catch (error) {
+      dispatch({type: 'TOGGLE_EMPATHY', postId: post.id});
+      console.error('Failed to toggle empathy:', error);
     }
   };
 
@@ -416,6 +466,14 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                 </View>
                 <TouchableOpacity
                   style={s.actionBtn}
+                  onPress={handleToggleEmpathy}>
+                  <View style={s.actionRow}>
+                    <Icon name={post.empathized ? 'hand-left' : 'hand-left-outline'} size={18} color={post.empathized ? theme.colors.primary : theme.colors.textTertiary} />
+                    <Text style={[s.actionText, post.empathized && {color: theme.colors.primary}]}>{post.empathyCount || 0}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.actionBtn}
                   onPress={handleToggleSave}>
                   <View style={s.actionRow}>
                     <Icon name={post.saved ? 'bookmark' : 'bookmark-outline'} size={18} color={post.saved ? theme.colors.accent : theme.colors.textTertiary} />
@@ -605,12 +663,12 @@ const makeStyles = (theme: Theme) =>
     postTime: {
       ...theme.typography.captionSmall,
       color: theme.colors.textTertiary,
-      marginTop: 2,
+      marginTop: theme.spacing.xs,
     },
     anonBadge: {
       backgroundColor: theme.colors.surfaceElevated,
       paddingHorizontal: theme.spacing.sm,
-      paddingVertical: 3,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.sm,
     },
     anonBadgeText: {
@@ -620,7 +678,7 @@ const makeStyles = (theme: Theme) =>
     },
     followBtn: {
       paddingHorizontal: theme.spacing.md,
-      paddingVertical: 5,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.primary,
     },
@@ -658,7 +716,7 @@ const makeStyles = (theme: Theme) =>
     },
     postActions: {
       flexDirection: 'row',
-      gap: theme.spacing.xl,
+      gap: theme.spacing.lg,
       paddingTop: theme.spacing.md,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
@@ -785,7 +843,7 @@ const makeStyles = (theme: Theme) =>
       fontWeight: '600',
     },
     replyCancel: {
-      fontSize: 16,
+      ...theme.typography.bodyLarge,
       color: theme.colors.textSecondary,
       padding: theme.spacing.xs,
     },
@@ -809,8 +867,8 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
     },
     sendBtn: {
-      paddingHorizontal: 18,
-      paddingVertical: 10,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.pill,
     },

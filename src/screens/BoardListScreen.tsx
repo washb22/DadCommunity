@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
+  ScrollView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,20 +14,12 @@ import Header from '../components/Header';
 import {BOARDS} from '../data/mockData';
 import type {BoardListScreenProps} from '../navigation/types';
 
-const {width} = Dimensions.get('window');
-
-const BOARD_ICON_MAP: Record<string, string> = {
-  '💑': 'heart',
-  '📝': 'chatbubbles',
-  '👶': 'people',
-};
-
-const CARD_COLORS = ['#3D5A80', '#4A7C59', '#C97B3D'];
-
 export default function BoardListScreen({navigation}: BoardListScreenProps) {
   const {state} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
+
+  const boardColors = theme.colors.boardColors;
 
   return (
     <SafeAreaView style={s.container}>
@@ -36,12 +28,14 @@ export default function BoardListScreen({navigation}: BoardListScreenProps) {
         rightIcon="search-outline"
         onRightPress={() => navigation.navigate('Search')}
       />
-      <View style={s.cardList}>
+      <ScrollView
+        contentContainerStyle={s.cardList}
+        showsVerticalScrollIndicator={false}>
         {BOARDS.map((board, index) => {
           const postCount = state.posts.filter(
             p => p.category === board.category,
           ).length;
-          const cardColor = CARD_COLORS[index % CARD_COLORS.length];
+          const cardColor = boardColors[index % boardColors.length];
 
           return (
             <TouchableOpacity
@@ -57,25 +51,33 @@ export default function BoardListScreen({navigation}: BoardListScreenProps) {
               <View style={s.cardTop}>
                 <View style={s.cardIconWrap}>
                   <Icon
-                    name={BOARD_ICON_MAP[board.icon] || 'ellipse-outline'}
+                    name={board.ionicon}
                     size={28}
-                    color="#FFFFFF"
+                    color={theme.colors.onPrimary}
                   />
                 </View>
-                {board.hasNew && <View style={s.newBadge}><Text style={s.newBadgeText}>NEW</Text></View>}
+                {board.hasNew && (
+                  <View style={s.newBadge}>
+                    <Text style={s.newBadgeText}>NEW</Text>
+                  </View>
+                )}
               </View>
               <View style={s.cardBottom}>
                 <Text style={s.cardName}>{board.name}</Text>
                 <Text style={s.cardDesc}>{board.desc}</Text>
                 <View style={s.cardFooter}>
                   <Text style={s.cardCount}>게시글 {postCount}개</Text>
-                  <Icon name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+                  <Icon
+                    name="chevron-forward"
+                    size={18}
+                    color="rgba(255,255,255,0.7)"
+                  />
                 </View>
               </View>
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -89,9 +91,9 @@ const makeStyles = (theme: Theme) =>
     cardList: {
       padding: theme.spacing.base,
       gap: theme.spacing.base,
+      paddingBottom: theme.spacing['2xl'],
     },
     card: {
-      width: width - theme.spacing.base * 2,
       borderRadius: theme.radius.lg,
       padding: theme.spacing.lg,
       minHeight: 150,
@@ -111,27 +113,27 @@ const makeStyles = (theme: Theme) =>
       justifyContent: 'center',
     },
     newBadge: {
-      backgroundColor: '#FF6B6B',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
+      backgroundColor: theme.colors.accent,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.md,
     },
     newBadgeText: {
-      color: '#FFFFFF',
-      fontSize: 11,
+      ...theme.typography.overline,
       fontWeight: '700',
+      color: theme.colors.onPrimary,
     },
     cardBottom: {
       marginTop: theme.spacing.md,
     },
     cardName: {
-      fontSize: 22,
+      ...theme.typography.h2,
       fontWeight: '800',
-      color: '#FFFFFF',
-      marginBottom: 4,
+      color: theme.colors.onPrimary,
+      marginBottom: theme.spacing.xs,
     },
     cardDesc: {
-      fontSize: 13,
+      ...theme.typography.caption,
       color: 'rgba(255,255,255,0.8)',
       marginBottom: theme.spacing.md,
     },
@@ -141,7 +143,7 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     cardCount: {
-      fontSize: 13,
+      ...theme.typography.caption,
       color: 'rgba(255,255,255,0.7)',
       fontWeight: '600',
     },

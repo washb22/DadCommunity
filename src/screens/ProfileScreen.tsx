@@ -163,7 +163,7 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
             <Switch
               value={forceDarkMode}
               onValueChange={setForceDarkMode}
-              trackColor={{false: '#D4C9B8', true: theme.colors.primary}}
+              trackColor={{false: theme.colors.secondaryDark, true: theme.colors.primary}}
               thumbColor={theme.colors.onPrimary}
             />
           </View>

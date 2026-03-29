@@ -183,6 +183,30 @@ export async function toggleSave(postId: string, userId: string) {
   });
 }
 
+export async function toggleEmpathy(postId: string, userId: string) {
+  const postRef = postsRef.doc(postId);
+
+  return firestore().runTransaction(async transaction => {
+    const doc = await transaction.get(postRef);
+    if (!doc.exists) return;
+
+    const data = doc.data()!;
+    const empathizedBy: string[] = data.empathizedBy || [];
+    const isEmpathized = empathizedBy.includes(userId);
+
+    transaction.update(postRef, {
+      empathizedBy: isEmpathized
+        ? firestore.FieldValue.arrayRemove(userId)
+        : firestore.FieldValue.arrayUnion(userId),
+      empathyCount: isEmpathized
+        ? firestore.FieldValue.increment(-1)
+        : firestore.FieldValue.increment(1),
+    });
+
+    return !isEmpathized;
+  });
+}
+
 // Comments are subcollection of posts
 const commentsRef = (postId: string) =>
   postsRef.doc(postId).collection('comments');

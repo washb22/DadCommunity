@@ -278,7 +278,7 @@ function SettingRow({
         onValueChange={onToggle}
         disabled={disabled}
         trackColor={{
-          false: '#D4C9B8',
+          false: theme.colors.secondaryDark,
           true: theme.colors.primary,
         }}
         thumbColor={theme.colors.onPrimary}
@@ -317,7 +317,7 @@ const makeStyles = (theme: Theme) =>
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
+      paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.base,
       gap: theme.spacing.md,
     },

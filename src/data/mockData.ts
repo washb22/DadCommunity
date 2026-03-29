@@ -23,6 +23,9 @@ export interface Post {
   images?: string[];
   tags?: string[];
   shareCount?: number;
+  empathized: boolean;
+  empathyCount: number;
+  empathizedBy?: string[];
   authorAgeGroup?: string;
 }
 
@@ -82,6 +85,7 @@ export interface ChatMessage {
 export interface Board {
   id: string;
   icon: string;
+  ionicon: string;
   iconBg: string;
   name: string;
   category: string;
@@ -113,6 +117,7 @@ export const BOARDS: Board[] = [
   {
     id: '1',
     icon: '💑',
+    ionicon: 'heart-outline',
     iconBg: '#FFE0E0',
     name: '부부관계',
     category: '부부관계',
@@ -122,6 +127,7 @@ export const BOARDS: Board[] = [
   {
     id: '2',
     icon: '📝',
+    ionicon: 'chatbubbles-outline',
     iconBg: '#E0F0FF',
     name: '자유게시판',
     category: '자유',
@@ -131,10 +137,81 @@ export const BOARDS: Board[] = [
   {
     id: '3',
     icon: '👶',
+    ionicon: 'people-outline',
     iconBg: '#FFF3E0',
     name: '육아게시판',
     category: '육아',
     desc: '육아 고민, 팁, 경험 공유',
+    hasNew: true,
+  },
+  {
+    id: '4',
+    icon: '💼',
+    ionicon: 'briefcase-outline',
+    iconBg: '#E8E0F0',
+    name: '직장생활',
+    category: '직장생활',
+    desc: '직장인 아빠들의 이야기',
+    hasNew: false,
+  },
+  {
+    id: '5',
+    icon: '📈',
+    ionicon: 'trending-up-outline',
+    iconBg: '#E0F0F0',
+    name: '재테크/부업',
+    category: '재테크/부업',
+    desc: '투자, 저축, 부업 정보 공유',
+    hasNew: true,
+  },
+  {
+    id: '6',
+    icon: '💪',
+    ionicon: 'fitness-outline',
+    iconBg: '#F0E8E0',
+    name: '건강/운동',
+    category: '건강/운동',
+    desc: '운동 루틴, 건강 관리 팁',
+    hasNew: false,
+  },
+  {
+    id: '7',
+    icon: '🍳',
+    ionicon: 'restaurant-outline',
+    iconBg: '#E0E8F0',
+    name: '요리/집안일',
+    category: '요리/집안일',
+    desc: '요리 레시피, 집안일 팁',
+    hasNew: false,
+  },
+  {
+    id: '8',
+    icon: '🎮',
+    ionicon: 'game-controller-outline',
+    iconBg: '#F0F0E0',
+    name: '취미게시판',
+    category: '취미',
+    desc: '캠핑, 게임, 독서, 음악 등',
+    hasNew: false,
+  },
+  {
+    id: '9',
+    icon: '📢',
+    ionicon: 'megaphone-outline',
+    iconBg: '#F0E0E0',
+    name: '공지사항',
+    category: 'notice',
+    desc: '서비스 소식과 업데이트',
+    hasNew: true,
+  },
+  {
+    id: 'counseling',
+    icon: '💬',
+    ionicon: 'chatbubble-ellipses-outline',
+    iconBg: '#E0E0F0',
+    name: '고민상담',
+    category: '고민상담',
+    desc: '아빠들의 솔직한 고민을 나누는 공간',
     hasNew: true,
   },
 ];
@@ -143,9 +220,8 @@ export const INITIAL_POSTS: Post[] = [];
 
 export const INITIAL_CHATROOMS: ChatRoom[] = [];
 
-export const CATEGORIES = ['전체', '부부관계', '자유', '육아'];
-export const TABS = ['인기', '최신', '팔로잉'];
-
+export const CATEGORIES = ['전체', '부부관계', '자유', '육아', '직장생활', '재테크/부업', '건강/운동', '요리/집안일', '취미', '고민상담'];
+export const TABS = ['인기', '최신', '팔로잉', '또래 아빠'];
 export function getRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);

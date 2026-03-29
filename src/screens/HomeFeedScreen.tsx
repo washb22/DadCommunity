@@ -15,7 +15,7 @@ import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import PostCard from '../components/PostCard';
 import EmptyState from '../components/EmptyState';
-import {CATEGORIES, TABS, getRelativeTime, Post} from '../data/mockData';
+import {CATEGORIES, TABS, Post} from '../data/mockData';
 import * as postService from '../services/postService';
 import * as followService from '../services/followService';
 import type {HomeFeedScreenProps} from '../navigation/types';
@@ -34,29 +34,10 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
 
-  // Shared enrichment function - converts raw Firestore posts to app format
+  // Enrich raw Firestore posts with user-specific data (liked/saved/time)
   const enrichPosts = useCallback(
     (posts: Partial<Post>[]) =>
-      posts.map(p => {
-        const ts =
-          p.timestamp && typeof p.timestamp.toDate === 'function'
-            ? p.timestamp.toDate().getTime()
-            : typeof p.timestamp === 'number'
-            ? p.timestamp
-            : Date.now();
-        return {
-          ...p,
-          time: getRelativeTime(ts),
-          timestamp: ts,
-          liked: Array.isArray(p.likedBy)
-            ? p.likedBy.includes(state.uid || '')
-            : false,
-          saved: Array.isArray(p.savedBy)
-            ? p.savedBy.includes(state.uid || '')
-            : false,
-          comments: p.comments || [],
-        };
-      }),
+      postService.enrichPostsWithUserData(posts, state.uid),
     [state.uid],
   );
 
@@ -131,6 +112,10 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
     if (activeTab === '팔로잉') {
       const authorId = p.userId;
       if (!authorId || !followingIds.includes(authorId)) return false;
+    }
+    if (activeTab === '또래 아빠') {
+      if (!state.user.childAgeGroup || !p.authorAgeGroup) return false;
+      if (p.authorAgeGroup !== state.user.childAgeGroup) return false;
     }
     return true;
   });
@@ -212,6 +197,20 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
     [state.uid, dispatch],
   );
 
+    const handleToggleEmpathy = useCallback(
+    async (postId: string) => {
+      if (!state.uid) return;
+      dispatch({type: 'TOGGLE_EMPATHY', postId});
+      try {
+        await postService.toggleEmpathy(postId, state.uid);
+      } catch (error) {
+        dispatch({type: 'TOGGLE_EMPATHY', postId});
+        console.error('Failed to toggle empathy:', error);
+      }
+    },
+    [state.uid, dispatch],
+  );
+
   const unreadNotifs = state.notifications.filter(n => !n.read).length;
 
   if (loading) {
@@ -253,6 +252,14 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
                 s.tabText,
                 activeTab === tab && s.tabTextActive,
               ]}>
+              {tab === '또래 아빠' && (
+                <Icon
+                  name="people-outline"
+                  size={14}
+                  color={activeTab === tab ? theme.colors.primary : theme.colors.textTertiary}
+                  style={{marginRight: theme.spacing.xs}}
+                />
+              )}
               {tab}
             </Text>
           </TouchableOpacity>
@@ -303,6 +310,7 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
               onPress={() => navigation.navigate('PostDetail', {postId: item.id})}
               onLike={() => handleToggleLike(item.id)}
               onSave={() => handleToggleSave(item.id)}
+              onEmpathize={() => handleToggleEmpathy(item.id)}
             />
           )}
           contentContainerStyle={s.feedContent}
@@ -385,7 +393,7 @@ const makeStyles = (theme: Theme) =>
     },
     catChip: {
       paddingHorizontal: theme.spacing.base,
-      paddingVertical: 7,
+      paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.pill,
       backgroundColor: theme.colors.surfaceElevated,
     },

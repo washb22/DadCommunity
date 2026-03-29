@@ -30,12 +30,12 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     badge: {
       backgroundColor: theme.colors.accentLight,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.sm,
     },
     text: {
-      fontSize: 11,
+      ...theme.typography.overline,
       fontWeight: '600',
       color: theme.colors.accent,
     },

@@ -29,7 +29,7 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: theme.spacing['3xl'],
-      paddingVertical: 60,
+      paddingVertical: theme.spacing['4xl'],
     },
     icon: {
       marginBottom: theme.spacing.base,

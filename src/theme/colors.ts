@@ -17,6 +17,19 @@ export const colors = {
     error: '#C44B4B',
     success: '#4B8C6B',
     onPrimary: '#FFFFFF',
+    // Board card colors (light mode)
+    boardColors: [
+      '#3D5A80', // primary (부부관계)
+      '#4A7C59', // green (자유게시판)
+      '#C97B3D', // orange (육아)
+      '#6B5B8D', // purple (직장생활)
+      '#3D7A80', // teal (재테크/부업)
+      '#8C6B4B', // brown (건강/운동)
+      '#5B7BA5', // primaryLight (요리/집안일)
+      '#7A6B3D', // olive (취미)
+      '#C4754B', // accent (공지사항)
+      '#7B68A6', // warm purple (고민상담)
+    ] as string[],
   },
   dark: {
     primary: '#6B9FD4',
@@ -36,5 +49,18 @@ export const colors = {
     error: '#E06060',
     success: '#5EAD80',
     onPrimary: '#FFFFFF',
+    // Board card colors (dark mode - slightly muted)
+    boardColors: [
+      '#2C4463', // primary dark
+      '#3A6148', // green dark
+      '#A06230', // orange dark
+      '#544874', // purple dark
+      '#2C6166', // teal dark
+      '#6E5438', // brown dark
+      '#4A6A8E', // primaryLight dark
+      '#61543A', // olive dark
+      '#A05E3C', // accent dark
+      '#5A4E7A', // warm purple dark (고���상담)
+    ] as string[],
   },
 };

@@ -1,18 +1,18 @@
 import React, {useEffect} from 'react';
-import {StatusBar, useColorScheme} from 'react-native';
+import {StatusBar} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
-import {ThemeProvider} from './src/theme';
+import {ThemeProvider, useTheme} from './src/theme';
 import {AppProvider} from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import {setupNotifications} from './src/services/notificationService';
 
 function ThemedStatusBar() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const theme = useTheme();
+  
   return (
     <StatusBar
-      barStyle={isDark ? 'light-content' : 'dark-content'}
+      barStyle={theme.isDark ? 'light-content' : 'dark-content'}
       backgroundColor="transparent"
       translucent
     />

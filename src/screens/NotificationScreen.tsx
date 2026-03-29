@@ -21,6 +21,8 @@ const ICON_MAP: Record<string, string> = {
   like: 'heart',
   comment: 'chatbubble-outline',
   chat: 'mail-outline',
+  reply: 'chatbubble-outline',
+  follow: 'person-add-outline',
 };
 
 export default function NotificationScreen({navigation}: NotificationScreenProps) {
@@ -58,6 +60,7 @@ export default function NotificationScreen({navigation}: NotificationScreenProps
               time: getRelativeTime(ts),
               timestamp: ts,
               read: data.read || false,
+              targetId: data.targetId || undefined,
             };
           });
           dispatch({type: 'SET_NOTIFICATIONS', notifications});
@@ -83,6 +86,23 @@ export default function NotificationScreen({navigation}: NotificationScreenProps
         console.error('Failed to mark notification read:', error);
       }
       dispatch({type: 'MARK_NOTIFICATION_READ', notificationId: item.id});
+    }
+
+    // Navigate to the relevant screen based on notification type
+    if (item.targetId) {
+      switch (item.type) {
+        case 'like':
+        case 'comment':
+        case 'reply':
+          navigation.navigate('PostDetail', {postId: item.targetId});
+          break;
+        case 'chat':
+          navigation.navigate('ChatDetail', {chatRoomId: item.targetId});
+          break;
+        case 'follow':
+          // Could navigate to user profile in the future
+          break;
+      }
     }
   };
 

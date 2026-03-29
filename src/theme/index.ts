@@ -32,7 +32,7 @@ const DarkModeToggleContext = createContext<DarkModeContext>({
 
 const darkBorder: ViewStyle = {
   borderWidth: 1,
-  borderColor: '#3A3A40',
+  borderColor: colors.dark.border,
 };
 
 const darkShadows: ShadowLevels = {

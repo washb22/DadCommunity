@@ -264,7 +264,7 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
     },
     clear: {
-      fontSize: 16,
+      ...theme.typography.bodyLarge,
       color: theme.colors.textSecondary,
       padding: theme.spacing.xs,
     },

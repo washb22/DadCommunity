@@ -20,11 +20,12 @@ import {getUserProfile} from '../services/authService';
 // ─── Types ───
 export interface Notification {
   id: string;
-  type: 'like' | 'comment' | 'chat';
+  type: 'like' | 'comment' | 'reply' | 'chat' | 'follow';
   message: string;
   time: string;
   timestamp: number;
   read: boolean;
+  targetId?: string;
 }
 
 export interface AppState {
@@ -49,6 +50,7 @@ export type Action =
   | {type: 'SET_FIREBASE_READY'; ready: boolean}
   | {type: 'TOGGLE_LIKE'; postId: string}
   | {type: 'TOGGLE_SAVE'; postId: string}
+  | {type: 'TOGGLE_EMPATHY'; postId: string}
   | {type: 'ADD_POST'; post: Post}
   | {type: 'UPDATE_POST'; postId: string; updates: {title?: string; text?: string}}
   | {type: 'DELETE_POST'; postId: string}
@@ -125,6 +127,22 @@ function appReducer(state: AppState, action: Action): AppState {
       const posts = state.posts.map(p => {
         if (p.id === action.postId) {
           return {...p, saved: !p.saved};
+        }
+        return p;
+      });
+      return {...state, posts};
+    }
+
+    case 'TOGGLE_EMPATHY': {
+      const posts = state.posts.map(p => {
+        if (p.id === action.postId) {
+          return {
+            ...p,
+            empathized: !p.empathized,
+            empathyCount: p.empathized
+              ? (p.empathyCount || 1) - 1
+              : (p.empathyCount || 0) + 1,
+          };
         }
         return p;
       });
