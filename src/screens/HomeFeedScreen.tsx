@@ -293,8 +293,28 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
         />
       </View>
 
+      {/* 또래 아빠 배너 */}
+      {activeTab === '또래 아빠' && state.user.childAgeGroup && (
+        <View style={s.peerBanner}>
+          <Icon name="people" size={20} color={theme.colors.primary} />
+          <Text style={s.peerBannerText}>
+            {state.user.childAgeGroup === 'expecting' ? '임신 중인' :
+             state.user.childAgeGroup === 'infant' ? '영아 자녀를 둔' :
+             state.user.childAgeGroup === 'toddler' ? '유아 자녀를 둔' :
+             state.user.childAgeGroup === 'elementary' ? '초등 자녀를 둔' :
+             '중고등 자녀를 둔'} 아빠들의 이야기
+          </Text>
+        </View>
+      )}
+
       {/* Feed */}
-      {filteredPosts.length === 0 ? (
+      {activeTab === '또래 아빠' && !state.user.childAgeGroup ? (
+        <EmptyState
+          icon="people-outline"
+          title="자녀 연령대를 설정해주세요"
+          subtitle="프로필에서 자녀 연령대를 설정하면 또래 아빠들의 글을 볼 수 있어요"
+        />
+      ) : filteredPosts.length === 0 ? (
         <EmptyState
           icon="mail-open-outline"
           title="게시글이 없습니다"
@@ -425,5 +445,21 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       ...theme.shadows.level4,
+    },
+    peerBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.secondary,
+      marginHorizontal: theme.spacing.base,
+      marginTop: theme.spacing.sm,
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.md,
+      gap: theme.spacing.sm,
+    },
+    peerBannerText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+      fontWeight: '600',
+      flex: 1,
     },
   });

@@ -26,6 +26,7 @@ const BOARD_OPTIONS = [
   {label: '재테크/부업', category: '재테크/부업'},
   {label: '건강/운동', category: '건강/운동'},
   {label: '요리/집안일', category: '요리/집안일'},
+  {label: '고민상담', category: '고민상담'},
 ];
 
 export default function WritePostScreen({navigation, route}: WritePostScreenProps) {
@@ -239,6 +240,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
                 onPress={() => {
                   setSelectedBoard(board);
                   setShowBoardPicker(false);
+                  if (board.category === '고민상담') { setIsAnonymous(true); }
                 }}>
                 <Text
                   style={[
@@ -250,6 +252,16 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        )}
+
+        {/* 고민상담 안내 */}
+        {selectedBoard?.category === '고민상담' && (
+          <View style={s.counselGuide}>
+            <Icon name="shield-checkmark-outline" size={20} color={theme.colors.primary} />
+            <Text style={s.counselGuideText}>
+              고민상담 게시판은 익명이 기본입니다. 안심하고 이야기해주세요.
+            </Text>
           </View>
         )}
 
@@ -476,6 +488,20 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surfaceElevated,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    counselGuide: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.secondary,
+      padding: theme.spacing.md,
+      borderRadius: theme.radius.md,
+      marginBottom: theme.spacing.base,
+      gap: theme.spacing.sm,
+    },
+    counselGuideText: {
+      ...theme.typography.caption,
+      color: theme.colors.textPrimary,
+      flex: 1,
     },
     imageRemoveBtn: {
       position: 'absolute',

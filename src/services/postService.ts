@@ -60,7 +60,8 @@ export async function fetchPosts(
         : 0;
       if (!ts) return {id: doc.id, ...data, _score: 0, _doc: doc};
       const hoursAgo = Math.max(0, (now - ts) / (1000 * 60 * 60));
-      const score = (likes + comments * 2 + saves) / Math.pow(hoursAgo + 2, 1.5);
+      const empathy = data.empathyCount || 0;
+      const score = (likes + comments * 2 + saves + empathy * 1.5) / Math.pow(hoursAgo + 2, 1.5);
       return {id: doc.id, ...data, _score: score, _doc: doc};
     });
     scored.sort((a, b) => b._score - a._score);
@@ -181,6 +182,39 @@ export async function toggleSave(postId: string, userId: string) {
 
     return !isSaved;
   });
+}
+
+export async function fetchPostsByAgeGroup(
+  ageGroup: string,
+  category?: string,
+  lastDoc?: FirebaseFirestoreTypes.QueryDocumentSnapshot | null,
+  limit = 20,
+) {
+  let query = postsRef.where('authorAgeGroup', '==', ageGroup) as FirebaseFirestoreTypes.Query;
+
+  if (category && category !== '전체') {
+    query = query.where('category', '==', category);
+  }
+
+  query = query.orderBy('timestamp', 'desc');
+
+  if (lastDoc) {
+    query = query.startAfter(lastDoc);
+  }
+
+  query = query.limit(limit);
+
+  const snapshot = await query.get();
+  const posts: Post[] = [];
+  snapshot.forEach(doc => {
+    posts.push({id: doc.id, ...doc.data()} as Post);
+  });
+
+  return {
+    posts,
+    lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+    hasMore: snapshot.docs.length === limit,
+  };
 }
 
 export async function toggleEmpathy(postId: string, userId: string) {
