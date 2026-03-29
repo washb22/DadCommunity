@@ -91,6 +91,7 @@ export interface Board {
   category: string;
   desc: string;
   hasNew: boolean;
+  visible: boolean;
 }
 
 export interface UserProfile {
@@ -123,6 +124,7 @@ export const BOARDS: Board[] = [
     category: '부부관계',
     desc: '아내와의 관계, 소통, 갈등 해결',
     hasNew: true,
+    visible: true,
   },
   {
     id: '2',
@@ -133,6 +135,7 @@ export const BOARDS: Board[] = [
     category: '자유',
     desc: '자유롭게 이야기 나눠요',
     hasNew: true,
+    visible: true,
   },
   {
     id: '3',
@@ -143,6 +146,7 @@ export const BOARDS: Board[] = [
     category: '육아',
     desc: '육아 고민, 팁, 경험 공유',
     hasNew: true,
+    visible: true,
   },
   {
     id: '4',
@@ -153,6 +157,7 @@ export const BOARDS: Board[] = [
     category: '직장생활',
     desc: '직장인 아빠들의 이야기',
     hasNew: false,
+    visible: false,
   },
   {
     id: '5',
@@ -163,6 +168,7 @@ export const BOARDS: Board[] = [
     category: '재테크/부업',
     desc: '투자, 저축, 부업 정보 공유',
     hasNew: true,
+    visible: false,
   },
   {
     id: '6',
@@ -173,6 +179,7 @@ export const BOARDS: Board[] = [
     category: '건강/운동',
     desc: '운동 루틴, 건강 관리 팁',
     hasNew: false,
+    visible: false,
   },
   {
     id: '7',
@@ -183,6 +190,7 @@ export const BOARDS: Board[] = [
     category: '요리/집안일',
     desc: '요리 레시피, 집안일 팁',
     hasNew: false,
+    visible: false,
   },
   {
     id: '8',
@@ -193,6 +201,7 @@ export const BOARDS: Board[] = [
     category: '취미',
     desc: '캠핑, 게임, 독서, 음악 등',
     hasNew: false,
+    visible: false,
   },
   {
     id: '9',
@@ -203,6 +212,7 @@ export const BOARDS: Board[] = [
     category: 'notice',
     desc: '서비스 소식과 업데이트',
     hasNew: true,
+    visible: false,
   },
   {
     id: 'counseling',
@@ -213,6 +223,7 @@ export const BOARDS: Board[] = [
     category: '고민상담',
     desc: '아빠들의 솔직한 고민을 나누는 공간',
     hasNew: true,
+    visible: false,
   },
 ];
 
@@ -220,7 +231,8 @@ export const INITIAL_POSTS: Post[] = [];
 
 export const INITIAL_CHATROOMS: ChatRoom[] = [];
 
-export const CATEGORIES = ['전체', '부부관계', '자유', '육아', '직장생활', '재테크/부업', '건강/운동', '요리/집안일', '취미', '고민상담'];
+export const ALL_CATEGORIES = ['전체', '부부관계', '자유', '육아', '직장생활', '재테크/부업', '건강/운동', '요리/집안일', '취미', '고민상담'];
+export const CATEGORIES = ['전체', '부부관계', '자유', '육아'];
 export const TABS = ['인기', '최신', '팔로잉', '또래 아빠'];
 export function getRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;

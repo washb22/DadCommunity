@@ -31,7 +31,7 @@ export default function BoardListScreen({navigation}: BoardListScreenProps) {
       <ScrollView
         contentContainerStyle={s.cardList}
         showsVerticalScrollIndicator={false}>
-        {BOARDS.map((board, index) => {
+        {BOARDS.filter(b => b.visible).map((board, index) => {
           const postCount = state.posts.filter(
             p => p.category === board.category,
           ).length;
