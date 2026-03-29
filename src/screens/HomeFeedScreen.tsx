@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
@@ -25,7 +25,7 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
-  const [activeTab, setActiveTab] = useState('최신');
+  const [activeTab, setActiveTab] = useState('인기');
   const [activeCategory, setActiveCategory] = useState('전체');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);

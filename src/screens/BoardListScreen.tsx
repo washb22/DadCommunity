@@ -3,48 +3,26 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
-  SafeAreaView,
+  Dimensions,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
-import {BOARDS, Board} from '../data/mockData';
+import {BOARDS} from '../data/mockData';
 import type {BoardListScreenProps} from '../navigation/types';
 
+const {width} = Dimensions.get('window');
+
 const BOARD_ICON_MAP: Record<string, string> = {
-  '💑': 'heart-outline',
-  '📝': 'chatbubbles-outline',
-  '🎮': 'game-controller-outline',
-  '👶': 'people-outline',
-  '💼': 'briefcase-outline',
-  '💰': 'trending-up-outline',
-  '💪': 'fitness-outline',
-  '🍳': 'restaurant-outline',
-  '📢': 'megaphone-outline',
+  '💑': 'heart',
+  '📝': 'chatbubbles',
+  '👶': 'people',
 };
 
-function BoardItem({board, postCount, onPress, theme}: {board: Board; postCount: number; onPress: () => void; theme: Theme}) {
-  const s = makeStyles(theme);
-  return (
-    <TouchableOpacity style={s.boardItem} onPress={onPress} activeOpacity={0.6}>
-      <View style={[s.boardIcon, {backgroundColor: board.iconBg}]}>
-        <Icon name={BOARD_ICON_MAP[board.icon] || 'ellipse-outline'} size={22} color={theme.colors.onPrimary} />
-      </View>
-      <View style={s.boardInfo}>
-        <Text style={s.boardName}>{board.name}</Text>
-        <Text style={s.boardDesc}>{board.desc}</Text>
-      </View>
-      <View style={s.boardRight}>
-        {board.hasNew && <View style={s.newDot} />}
-        <Text style={s.postCount}>{postCount}개</Text>
-        <Icon name="chevron-forward" size={18} color={theme.colors.textTertiary} />
-      </View>
-    </TouchableOpacity>
-  );
-}
+const CARD_COLORS = ['#3D5A80', '#4A7C59', '#C97B3D'];
 
 export default function BoardListScreen({navigation}: BoardListScreenProps) {
   const {state} = useApp();
@@ -58,30 +36,46 @@ export default function BoardListScreen({navigation}: BoardListScreenProps) {
         rightIcon="search-outline"
         onRightPress={() => navigation.navigate('Search')}
       />
-      <FlatList
-        data={BOARDS}
-        keyExtractor={item => item.id}
-        renderItem={({item}) => {
+      <View style={s.cardList}>
+        {BOARDS.map((board, index) => {
           const postCount = state.posts.filter(
-            p => item.category === '공지' ? false : p.category === item.category,
+            p => p.category === board.category,
           ).length;
+          const cardColor = CARD_COLORS[index % CARD_COLORS.length];
+
           return (
-            <BoardItem
-              board={item}
-              postCount={postCount}
-              theme={theme}
-              onPress={() => {
-                if (item.category === '공지') return;
+            <TouchableOpacity
+              key={board.id}
+              style={[s.card, {backgroundColor: cardColor}]}
+              activeOpacity={0.8}
+              onPress={() =>
                 navigation.navigate('BoardDetail', {
-                  boardName: item.name,
-                  category: item.category,
-                });
-              }}
-            />
+                  boardName: board.name,
+                  category: board.category,
+                })
+              }>
+              <View style={s.cardTop}>
+                <View style={s.cardIconWrap}>
+                  <Icon
+                    name={BOARD_ICON_MAP[board.icon] || 'ellipse-outline'}
+                    size={28}
+                    color="#FFFFFF"
+                  />
+                </View>
+                {board.hasNew && <View style={s.newBadge}><Text style={s.newBadgeText}>NEW</Text></View>}
+              </View>
+              <View style={s.cardBottom}>
+                <Text style={s.cardName}>{board.name}</Text>
+                <Text style={s.cardDesc}>{board.desc}</Text>
+                <View style={s.cardFooter}>
+                  <Text style={s.cardCount}>게시글 {postCount}개</Text>
+                  <Icon name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+                </View>
+              </View>
+            </TouchableOpacity>
           );
-        }}
-        contentContainerStyle={s.listContent}
-      />
+        })}
+      </View>
     </SafeAreaView>
   );
 }
@@ -90,61 +84,65 @@ const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.background,
     },
-    listContent: {
-      paddingTop: theme.spacing.xs,
+    cardList: {
+      padding: theme.spacing.base,
+      gap: theme.spacing.base,
     },
-    boardItem: {
+    card: {
+      width: width - theme.spacing.base * 2,
+      borderRadius: theme.radius.lg,
+      padding: theme.spacing.lg,
+      minHeight: 150,
+      justifyContent: 'space-between',
+    },
+    cardTop: {
       flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: theme.spacing.base,
-      paddingHorizontal: theme.spacing.base,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
     },
-    boardIcon: {
-      width: 46,
-      height: 46,
-      borderRadius: theme.radius.md,
+    cardIconWrap: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: 'rgba(255,255,255,0.2)',
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: theme.spacing.md,
     },
-    boardEmoji: {
-      fontSize: 22,
+    newBadge: {
+      backgroundColor: '#FF6B6B',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
     },
-    boardInfo: {
-      flex: 1,
-    },
-    boardName: {
-      ...theme.typography.body,
+    newBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 11,
       fontWeight: '700',
-      color: theme.colors.textPrimary,
     },
-    boardDesc: {
-      ...theme.typography.captionSmall,
-      color: theme.colors.textSecondary,
-      marginTop: theme.spacing.xs,
+    cardBottom: {
+      marginTop: theme.spacing.md,
     },
-    boardRight: {
+    cardName: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginBottom: 4,
+    },
+    cardDesc: {
+      fontSize: 13,
+      color: 'rgba(255,255,255,0.8)',
+      marginBottom: theme.spacing.md,
+    },
+    cardFooter: {
       flexDirection: 'row',
+      justifyContent: 'space-between',
       alignItems: 'center',
-      gap: theme.spacing.sm,
     },
-    newDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: theme.colors.error,
-    },
-    postCount: {
-      ...theme.typography.captionSmall,
-      color: theme.colors.textTertiary,
-    },
-    arrow: {
-      fontSize: 16,
-      color: theme.colors.textTertiary,
-      fontWeight: '300',
+    cardCount: {
+      fontSize: 13,
+      color: 'rgba(255,255,255,0.7)',
+      fontWeight: '600',
     },
   });

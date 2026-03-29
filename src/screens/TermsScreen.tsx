@@ -5,9 +5,9 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   LayoutChangeEvent,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';
 import {termsContent} from '../data/legalContent';

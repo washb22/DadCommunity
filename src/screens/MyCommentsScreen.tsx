@@ -5,10 +5,10 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';

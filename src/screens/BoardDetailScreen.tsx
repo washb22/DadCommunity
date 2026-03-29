@@ -3,10 +3,10 @@ import {
   View,
   FlatList,
   StyleSheet,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Header from '../components/Header';

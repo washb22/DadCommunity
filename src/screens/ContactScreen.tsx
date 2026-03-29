@@ -7,11 +7,11 @@ import {
   ScrollView,
   Image,
   StyleSheet,
-  SafeAreaView,
   Alert,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import firestore from '@react-native-firebase/firestore';
 import storage from '@react-native-firebase/storage';

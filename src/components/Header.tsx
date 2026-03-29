@@ -32,7 +32,7 @@ export default function Header({
   const bg = backgroundColor || theme.colors.surface;
 
   return (
-    <View style={[s.header, {backgroundColor: bg, paddingTop: insets.top}]}>
+    <View style={[s.header, {backgroundColor: bg}]}>
       <View style={s.left}>
         {showBack && (
           <TouchableOpacity onPress={onBack} style={s.backBtn} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>

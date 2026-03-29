@@ -130,15 +130,6 @@ export const BOARDS: Board[] = [
   },
   {
     id: '3',
-    icon: '🎮',
-    iconBg: '#E8FFE0',
-    name: '취미게시판',
-    category: '취미',
-    desc: '운동, 게임, 캠핑, 낚시 등',
-    hasNew: false,
-  },
-  {
-    id: '4',
     icon: '👶',
     iconBg: '#FFF3E0',
     name: '육아게시판',
@@ -146,59 +137,14 @@ export const BOARDS: Board[] = [
     desc: '육아 고민, 팁, 경험 공유',
     hasNew: true,
   },
-  {
-    id: '5',
-    icon: '💼',
-    iconBg: '#E0E8FF',
-    name: '직장생활',
-    category: '직장생활',
-    desc: '직장 고민, 커리어, 워라밸',
-    hasNew: false,
-  },
-  {
-    id: '6',
-    icon: '💰',
-    iconBg: '#FFFDE0',
-    name: '재테크/부업',
-    category: '재테크/부업',
-    desc: '재테크, 부업, 투자 정보',
-    hasNew: false,
-  },
-  {
-    id: '7',
-    icon: '💪',
-    iconBg: '#E0FFE8',
-    name: '건강/운동',
-    category: '건강/운동',
-    desc: '운동, 건강관리, 다이어트',
-    hasNew: false,
-  },
-  {
-    id: '8',
-    icon: '🍳',
-    iconBg: '#FFE8E0',
-    name: '요리/집안일',
-    category: '요리/집안일',
-    desc: '요리, 집안일, 살림 팁',
-    hasNew: false,
-  },
-  {
-    id: '9',
-    icon: '📢',
-    iconBg: '#F0E0FF',
-    name: '공지사항',
-    category: '공지',
-    desc: '앱 업데이트 및 안내',
-    hasNew: false,
-  },
 ];
 
 export const INITIAL_POSTS: Post[] = [];
 
 export const INITIAL_CHATROOMS: ChatRoom[] = [];
 
-export const CATEGORIES = ['전체', '부부관계', '자유', '취미', '육아', '직장생활', '재테크/부업', '건강/운동', '요리/집안일'];
-export const TABS = ['최신', '인기', '팔로잉'];
+export const CATEGORIES = ['전체', '부부관계', '자유', '육아'];
+export const TABS = ['인기', '최신', '팔로잉'];
 
 export function getRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
