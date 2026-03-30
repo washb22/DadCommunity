@@ -84,6 +84,21 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
         </View>
         <Text style={s.title}>아빠의 다락방</Text>
         <Text style={s.subtitle}>아빠들의 솔직한 이야기 공간</Text>
+
+        <View style={s.valueProps}>
+          <View style={s.valueChip}>
+            <Icon name="chatbubbles-outline" size={16} color={theme.colors.primary} />
+            <Text style={s.valueChipText}>육아 고민 나누기</Text>
+          </View>
+          <View style={s.valueChip}>
+            <Icon name="people-outline" size={16} color={theme.colors.primary} />
+            <Text style={s.valueChipText}>또래 아빠 만나기</Text>
+          </View>
+          <View style={s.valueChip}>
+            <Icon name="heart-outline" size={16} color={theme.colors.primary} />
+            <Text style={s.valueChipText}>솔직한 대화</Text>
+          </View>
+        </View>
       </View>
 
       <Animated.View
@@ -92,10 +107,11 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
           {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
         ]}>
         <TouchableOpacity
-          style={[s.loginBtn, s.google]}
+          style={s.googleBtn}
           onPress={handleGoogleLogin}
           activeOpacity={0.8}>
-          <Text style={s.googleText}>G  구글로 시작하기</Text>
+          <Text style={s.googleG}>G</Text>
+          <Text style={s.googleBtnText}>Google로 시작하기</Text>
         </TouchableOpacity>
 
         <Text style={s.footerText}>
@@ -150,22 +166,46 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.sm,
     },
+    valueProps: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.xl,
+    },
+    valueChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      backgroundColor: theme.colors.secondary,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.pill,
+    },
+    valueChipText: {
+      ...theme.typography.caption,
+      color: theme.colors.textPrimary,
+    },
     buttonSection: {
       paddingBottom: 60,
       gap: theme.spacing.md,
     },
-    loginBtn: {
+    googleBtn: {
       height: 52,
-      borderRadius: theme.radius.md,
+      borderRadius: theme.radius.pill,
       alignItems: 'center',
       justifyContent: 'center',
+      flexDirection: 'row',
+      backgroundColor: '#FFFFFF',
+      gap: theme.spacing.sm,
+      ...theme.shadows.level2,
     },
-    google: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1.5,
-      borderColor: theme.colors.border,
+    googleG: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#4285F4',
     },
-    googleText: {
+    googleBtnText: {
       ...theme.typography.body,
       fontWeight: '700',
       color: theme.colors.textPrimary,

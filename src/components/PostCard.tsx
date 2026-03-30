@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, Image, FlatList, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {Post} from '../data/mockData';
+import {Post, ALL_CATEGORIES} from '../data/mockData';
 import {useTheme, Theme} from '../theme';
 import AgeBadge from './AgeBadge';
 
@@ -28,9 +28,12 @@ function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
         </View>
         <View style={s.headerInfo}>
           <Text style={s.user}>{post.user}</Text>
-          <Text style={s.meta}>
-            {post.time} · {post.category}
-          </Text>
+          <View style={s.metaRow}>
+            <Text style={s.meta}>{post.time}</Text>
+            <Text style={s.metaSep}> · </Text>
+            <View style={[s.catDot, {backgroundColor: theme.colors.boardColors[Math.max(0, ALL_CATEGORIES.indexOf(post.category) - 1)] || theme.colors.primary}]} />
+            <Text style={s.meta}>{post.category}</Text>
+          </View>
         </View>
         {post.isAnonymous ? (
           <View style={s.anonBadge}>
@@ -46,7 +49,7 @@ function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
           {post.title}
         </Text>
       ) : null}
-      <Text style={s.text} numberOfLines={3}>
+      <Text style={s.text} numberOfLines={2}>
         {post.text}
       </Text>
 
@@ -69,47 +72,52 @@ function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
 
       <View style={s.actions}>
         <TouchableOpacity
-          style={s.actionBtn}
-          onPress={onLike}
-          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon
-            name={post.liked ? 'heart' : 'heart-outline'}
-            size={18}
-            color={post.liked ? theme.colors.error : theme.colors.textTertiary}
-          />
-          <Text style={[s.actionText, post.liked && {color: theme.colors.error}]}>
-            {' '}{post.likes}
-          </Text>
-        </TouchableOpacity>
-        <View style={s.actionBtn}>
-          <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
-          <Text style={s.actionText}>
-            {' '}{post.comments.length}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={s.actionBtn}
+          style={[
+            s.empathyPill,
+            post.empathized && {backgroundColor: theme.colors.accentLight},
+          ]}
           onPress={onEmpathize}
-          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          activeOpacity={0.7}>
           <Icon
             name={post.empathized ? 'hand-left' : 'hand-left-outline'}
-            size={18}
-            color={post.empathized ? theme.colors.primary : theme.colors.textTertiary}
+            size={16}
+            color={post.empathized ? theme.colors.accent : theme.colors.primary}
           />
-          <Text style={[s.actionText, post.empathized && {color: theme.colors.primary}]}>
-            {' '}{post.empathyCount || 0}
+          <Text style={[s.empathyText, post.empathized && {color: theme.colors.accent}]}>
+            나도 그래요 {post.empathyCount || 0}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={s.actionBtn}
-          onPress={onSave}
-          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-          <Icon
-            name={post.saved ? 'bookmark' : 'bookmark-outline'}
-            size={18}
-            color={post.saved ? theme.colors.accent : theme.colors.textTertiary}
-          />
-        </TouchableOpacity>
+        <View style={s.ghostActions}>
+          <TouchableOpacity
+            style={s.actionBtn}
+            onPress={onLike}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Icon
+              name={post.liked ? 'heart' : 'heart-outline'}
+              size={18}
+              color={post.liked ? theme.colors.error : theme.colors.textTertiary}
+            />
+            <Text style={[s.actionText, post.liked && {color: theme.colors.error}]}>
+              {' '}{post.likes}
+            </Text>
+          </TouchableOpacity>
+          <View style={s.actionBtn}>
+            <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
+            <Text style={s.actionText}>
+              {' '}{post.comments.length}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={s.actionBtn}
+            onPress={onSave}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Icon
+              name={post.saved ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={post.saved ? theme.colors.accent : theme.colors.textTertiary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -152,10 +160,24 @@ const makeStyles = (theme: Theme) =>
       fontWeight: '700',
       color: theme.colors.textPrimary,
     },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: theme.spacing.xs,
+    },
     meta: {
       ...theme.typography.overline,
       color: theme.colors.textTertiary,
-      marginTop: theme.spacing.xs,
+    },
+    metaSep: {
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+    },
+    catDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginRight: theme.spacing.xs,
     },
     anonBadge: {
       backgroundColor: theme.colors.surfaceElevated,
@@ -190,10 +212,28 @@ const makeStyles = (theme: Theme) =>
     },
     actions: {
       flexDirection: 'row',
-      gap: theme.spacing.lg,
-      paddingTop: theme.spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: theme.spacing.xs,
+    },
+    empathyPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.secondary,
+      borderRadius: 999,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      gap: theme.spacing.xs,
+    },
+    empathyText: {
+      ...theme.typography.overline,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
+    ghostActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.base,
     },
     actionBtn: {
       flexDirection: 'row',

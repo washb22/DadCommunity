@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   StyleSheet,
   Alert,
   Switch,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -15,7 +18,7 @@ import {useTheme, useDarkMode, Theme} from '../theme';
 import Header from '../components/Header';
 import AgeBadge from '../components/AgeBadge';
 import InterestChips from '../components/InterestChip';
-import {signOut} from '../services/authService';
+import {signOut, deleteAccount} from '../services/authService';
 import type {ProfileScreenProps} from '../navigation/types';
 
 const MENU_SECTIONS = [
@@ -50,6 +53,45 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
   const {forceDarkMode, setForceDarkMode} = useDarkMode();
   const s = makeStyles(theme);
   const {user} = state;
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteNicknameInput, setDeleteNicknameInput] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '회원 탈퇴',
+      '탈퇴하면 작성한 글, 댓글, 프로필이 모두 삭제되며 복구할 수 없습니다.',
+      [
+        {text: '취소', style: 'cancel'},
+        {
+          text: '탈퇴하기',
+          style: 'destructive',
+          onPress: () => {
+            setDeleteNicknameInput('');
+            setDeleteModalVisible(true);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteNicknameInput !== user.nickname) {
+      Alert.alert('닉네임 불일치', '닉네임이 일치하지 않습니다.');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      dispatch({type: 'LOGOUT'});
+      navigation.reset({index: 0, routes: [{name: 'Login'}]});
+    } catch (error: any) {
+      Alert.alert('탈퇴 실패', error.message || '탈퇴 처리 중 오류가 발생했습니다.');
+    } finally {
+      setDeleting(false);
+      setDeleteModalVisible(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
@@ -169,6 +211,19 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
           </View>
         </View>
 
+        {/* 계정 관리 */}
+        <View style={s.menuSection}>
+          <Text style={s.sectionTitle}>계정</Text>
+          <TouchableOpacity
+            style={[s.menuItem, {borderBottomWidth: 0}]}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.6}>
+            <Icon name="person-remove-outline" size={20} color={theme.colors.textTertiary} style={s.menuIcon} />
+            <Text style={[s.menuLabel, {color: theme.colors.textTertiary}]}>회원 탈퇴</Text>
+            <Icon name="chevron-forward" size={20} color={theme.colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
           <Text style={s.logoutText}>로그아웃</Text>
@@ -176,6 +231,56 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
 
         <Text style={s.version}>버전 1.0.0</Text>
       </ScrollView>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !deleting && setDeleteModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            {deleting ? (
+              <View style={s.modalLoading}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={s.modalLoadingText}>탈퇴 처리 중...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={s.modalTitle}>정말 탈퇴하시겠습니까?</Text>
+                <Text style={s.modalDesc}>
+                  확인을 위해 닉네임을 입력해주세요.
+                </Text>
+                <Text style={s.modalNickname}>"{user.nickname}"</Text>
+                <TextInput
+                  style={s.modalInput}
+                  placeholder="닉네임 입력"
+                  placeholderTextColor={theme.colors.textTertiary}
+                  value={deleteNicknameInput}
+                  onChangeText={setDeleteNicknameInput}
+                  autoFocus
+                />
+                <View style={s.modalButtons}>
+                  <TouchableOpacity
+                    style={s.modalCancelBtn}
+                    onPress={() => setDeleteModalVisible(false)}>
+                    <Text style={s.modalCancelText}>취소</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      s.modalDeleteBtn,
+                      deleteNicknameInput !== user.nickname && s.modalDeleteBtnDisabled,
+                    ]}
+                    onPress={handleConfirmDelete}
+                    disabled={deleteNicknameInput !== user.nickname}>
+                    <Text style={s.modalDeleteText}>탈퇴하기</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -326,5 +431,88 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.captionSmall,
       color: theme.colors.textTertiary,
       paddingVertical: theme.spacing.lg,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: theme.spacing['2xl'],
+    },
+    modalContent: {
+      width: '100%',
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.xl,
+    },
+    modalLoading: {
+      alignItems: 'center',
+      paddingVertical: theme.spacing['2xl'],
+    },
+    modalLoadingText: {
+      ...theme.typography.body,
+      color: theme.colors.textSecondary,
+      marginTop: theme.spacing.md,
+    },
+    modalTitle: {
+      ...theme.typography.h3,
+      color: theme.colors.textPrimary,
+      textAlign: 'center',
+    },
+    modalDesc: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginTop: theme.spacing.sm,
+    },
+    modalNickname: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.primary,
+      textAlign: 'center',
+      marginTop: theme.spacing.sm,
+    },
+    modalInput: {
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      ...theme.typography.body,
+      color: theme.colors.textPrimary,
+      marginTop: theme.spacing.base,
+      textAlign: 'center',
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.lg,
+    },
+    modalCancelBtn: {
+      flex: 1,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.secondary,
+    },
+    modalCancelText: {
+      ...theme.typography.body,
+      fontWeight: '600',
+      color: theme.colors.textPrimary,
+    },
+    modalDeleteBtn: {
+      flex: 1,
+      paddingVertical: theme.spacing.md,
+      alignItems: 'center',
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.error,
+    },
+    modalDeleteBtnDisabled: {
+      opacity: 0.4,
+    },
+    modalDeleteText: {
+      ...theme.typography.body,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
   });

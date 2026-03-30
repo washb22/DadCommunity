@@ -49,6 +49,29 @@ async function ensureUserProfile(user: any) {
   }
 }
 
+export async function deleteAccount(): Promise<void> {
+  const currentUser = auth().currentUser;
+  if (!currentUser) throw new Error('로그인 상태가 아닙니다.');
+
+  try {
+    // Firestore에서 유저 데이터 삭제
+    await usersRef.doc(currentUser.uid).delete();
+
+    // Google 로그아웃
+    try {
+      await GoogleSignin.signOut();
+    } catch {}
+
+    // Firebase Auth 계정 삭제
+    await currentUser.delete();
+  } catch (error: any) {
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error('보안을 위해 재로그인이 필요합니다. 로그아웃 후 다시 로그인한 뒤 탈퇴해주세요.');
+    }
+    throw error;
+  }
+}
+
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const doc = await usersRef.doc(uid).get();
   if (!doc.exists) return null;

@@ -313,13 +313,27 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
           icon="people-outline"
           title="자녀 연령대를 설정해주세요"
           subtitle="프로필에서 자녀 연령대를 설정하면 또래 아빠들의 글을 볼 수 있어요"
+          actionLabel="자녀 연령대 설정하기"
+          onAction={() => navigation.navigate('EditProfile')}
         />
       ) : filteredPosts.length === 0 ? (
-        <EmptyState
-          icon="mail-open-outline"
-          title="게시글이 없습니다"
-          subtitle="첫 번째 글을 작성해보세요!"
-        />
+        activeTab === '팔로잉' ? (
+          <EmptyState
+            icon="mail-open-outline"
+            title="게시글이 없습니다"
+            subtitle="팔로잉한 사용자의 글이 여기에 표시됩니다"
+            actionLabel="인기 게시글 보러가기"
+            onAction={() => setActiveTab('인기')}
+          />
+        ) : (
+          <EmptyState
+            icon="mail-open-outline"
+            title="게시글이 없습니다"
+            subtitle="첫 번째 글을 작성해보세요!"
+            actionLabel="첫 글 작성하기"
+            onAction={() => navigation.navigate('WritePost')}
+          />
+        )
       ) : (
         <FlatList
           data={filteredPosts}
@@ -440,7 +454,7 @@ const makeStyles = (theme: Theme) =>
       right: theme.spacing.lg,
       width: 56,
       height: 56,
-      borderRadius: theme.radius.lg,
+      borderRadius: 28,
       backgroundColor: theme.colors.primary,
       alignItems: 'center',
       justifyContent: 'center',

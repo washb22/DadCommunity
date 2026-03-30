@@ -466,14 +466,6 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                 </View>
                 <TouchableOpacity
                   style={s.actionBtn}
-                  onPress={handleToggleEmpathy}>
-                  <View style={s.actionRow}>
-                    <Icon name={post.empathized ? 'hand-left' : 'hand-left-outline'} size={18} color={post.empathized ? theme.colors.primary : theme.colors.textTertiary} />
-                    <Text style={[s.actionText, post.empathized && {color: theme.colors.primary}]}>{post.empathyCount || 0}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.actionBtn}
                   onPress={handleToggleSave}>
                   <View style={s.actionRow}>
                     <Icon name={post.saved ? 'bookmark' : 'bookmark-outline'} size={18} color={post.saved ? theme.colors.accent : theme.colors.textTertiary} />
@@ -489,6 +481,24 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                   </View>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={[
+                  s.empathyBanner,
+                  post.empathized && {backgroundColor: theme.colors.accentLight},
+                ]}
+                onPress={handleToggleEmpathy}
+                activeOpacity={0.7}>
+                <Icon
+                  name={post.empathized ? 'hand-left' : 'hand-left-outline'}
+                  size={24}
+                  color={post.empathized ? theme.colors.accent : theme.colors.primary}
+                />
+                <View>
+                  <Text style={[s.empathyTitle, post.empathized && {color: theme.colors.accent}]}>나도 그래요</Text>
+                  <Text style={s.empathySub}>{post.empathyCount || 0}명이 공감했어요</Text>
+                </View>
+              </TouchableOpacity>
 
               <View style={s.commentsHeader}>
                 <Text style={s.commentsTitle}>
@@ -734,6 +744,24 @@ const makeStyles = (theme: Theme) =>
     },
     actionActive: {
       color: theme.colors.error,
+    },
+    empathyBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.secondary,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.md,
+      marginTop: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    empathyTitle: {
+      ...theme.typography.h3,
+      fontWeight: '700',
+      color: theme.colors.primary,
+    },
+    empathySub: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
     },
     commentsHeader: {
       marginTop: theme.spacing.lg,
