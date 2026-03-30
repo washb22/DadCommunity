@@ -1,8 +1,64 @@
 import storage from '@react-native-firebase/storage';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
-import {Alert, Platform} from 'react-native';
+import {Alert, Platform, PermissionsAndroid} from 'react-native';
+
+async function requestCameraPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      {
+        title: '카메라 권한',
+        message: '사진 촬영을 위해 카메라 접근 권한이 필요합니다.',
+        buttonPositive: '허용',
+        buttonNegative: '거부',
+      },
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  } catch {
+    return false;
+  }
+}
+
+async function requestGalleryPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+  try {
+    const sdkInt = Platform.Version as number;
+    if (sdkInt >= 33) {
+      const granted = await PermissionsAndroid.request(
+        'android.permission.READ_MEDIA_IMAGES' as any,
+        {
+          title: '사진 접근 권한',
+          message: '갤러리에서 사진을 선택하기 위해 권한이 필요합니다.',
+          buttonPositive: '허용',
+          buttonNegative: '거부',
+        },
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } else {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: '저장소 접근 권한',
+          message: '갤러리에서 사진을 선택하기 위해 권한이 필요합니다.',
+          buttonPositive: '허용',
+          buttonNegative: '거부',
+        },
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+  } catch {
+    return false;
+  }
+}
 
 export async function pickImage(): Promise<string | null> {
+  const hasPermission = await requestGalleryPermission();
+  if (!hasPermission) {
+    Alert.alert('권한 필요', '설정에서 사진 접근 권한을 허용해주세요.');
+    return null;
+  }
+
   const result = await launchImageLibrary({
     mediaType: 'photo',
     quality: 0.8,
@@ -15,6 +71,12 @@ export async function pickImage(): Promise<string | null> {
 }
 
 export async function takePhoto(): Promise<string | null> {
+  const hasPermission = await requestCameraPermission();
+  if (!hasPermission) {
+    Alert.alert('권한 필요', '설정에서 카메라 권한을 허용해주세요.');
+    return null;
+  }
+
   const result = await launchCamera({
     mediaType: 'photo',
     quality: 0.8,
