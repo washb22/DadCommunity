@@ -2,7 +2,8 @@ import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {Text, View, StyleSheet} from 'react-native';
+import {Text, View, StyleSheet, Platform} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useTheme, Theme} from '../theme';
 
@@ -41,6 +42,7 @@ const TAB_ICONS: Record<string, {focused: string; unfocused: string}> = {
 
 function MainTabs() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const s = makeStyles(theme);
 
   return (
@@ -48,7 +50,7 @@ function MainTabs() {
       screenOptions={({route}) => ({
         headerShown: false,
         tabBarShowLabel: true,
-        tabBarStyle: s.tabBar,
+        tabBarStyle: [s.tabBar, {paddingBottom: Math.max(insets.bottom, 10)}],
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textTertiary,
         tabBarLabelStyle: s.tabLabel,
@@ -110,8 +112,8 @@ export default function AppNavigator() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     tabBar: {
-      height: 68,
-      paddingBottom: 10,
+      height: 'auto' as any,
+      minHeight: 68,
       paddingTop: 10,
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,

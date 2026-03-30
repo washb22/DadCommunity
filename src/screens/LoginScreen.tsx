@@ -85,20 +85,6 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
         <Text style={s.title}>아빠의 다락방</Text>
         <Text style={s.subtitle}>아빠들의 솔직한 이야기 공간</Text>
 
-        <View style={s.valueProps}>
-          <View style={s.valueChip}>
-            <Icon name="chatbubbles-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.valueChipText}>육아 고민 나누기</Text>
-          </View>
-          <View style={s.valueChip}>
-            <Icon name="people-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.valueChipText}>또래 아빠 만나기</Text>
-          </View>
-          <View style={s.valueChip}>
-            <Icon name="heart-outline" size={16} color={theme.colors.primary} />
-            <Text style={s.valueChipText}>솔직한 대화</Text>
-          </View>
-        </View>
       </View>
 
       <Animated.View
@@ -165,26 +151,6 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.bodySmall,
       color: theme.colors.textSecondary,
       marginTop: theme.spacing.sm,
-    },
-    valueProps: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: theme.spacing.sm,
-      marginTop: theme.spacing.xl,
-    },
-    valueChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: theme.spacing.xs,
-      backgroundColor: theme.colors.secondary,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderRadius: theme.radius.pill,
-    },
-    valueChipText: {
-      ...theme.typography.caption,
-      color: theme.colors.textPrimary,
     },
     buttonSection: {
       paddingBottom: 60,
