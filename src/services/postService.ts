@@ -109,6 +109,7 @@ export async function createPost(post: {
   text: string;
   isAnonymous: boolean;
   images?: string[];
+  authorAgeGroup?: string;
 }) {
   const newPost = {
     ...post,

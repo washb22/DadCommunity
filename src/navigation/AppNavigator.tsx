@@ -112,7 +112,6 @@ export default function AppNavigator() {
 const makeStyles = (theme: Theme) =>
   StyleSheet.create({
     tabBar: {
-      height: 'auto' as any,
       minHeight: 68,
       paddingTop: 10,
       backgroundColor: theme.colors.surface,

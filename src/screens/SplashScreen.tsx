@@ -1,5 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 import {View, Text, StyleSheet, Animated} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
@@ -9,6 +10,7 @@ export default function SplashScreen({navigation}: SplashScreenProps) {
   const {state} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
+  const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -67,7 +69,7 @@ export default function SplashScreen({navigation}: SplashScreenProps) {
         <Text style={s.title}>아빠의 다락방</Text>
         <Text style={s.subtitle}>아빠들의 솔직한 이야기</Text>
       </Animated.View>
-      <Animated.Text style={[s.footer, {opacity: fadeAnim}]}>
+      <Animated.Text style={[s.footer, {opacity: fadeAnim, bottom: Math.max(40, insets.bottom + 16)}]}>
         Dad Community
       </Animated.Text>
     </View>

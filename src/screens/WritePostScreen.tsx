@@ -9,6 +9,8 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -180,6 +182,9 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
 
   return (
     <SafeAreaView style={s.container}>
+      <KeyboardAvoidingView
+        style={{flex: 1}}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={handleCancel} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
@@ -317,6 +322,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
           <Text style={s.anonDesc}>닉네임이 '익명의 아빠'로 표시됩니다</Text>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

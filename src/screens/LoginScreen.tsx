@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
@@ -77,7 +78,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
   }
 
   return (
-    <View style={s.container}>
+    <SafeAreaView style={s.container}>
       <View style={s.topSection}>
         <View style={s.logoCircle}>
           <Text style={s.logo}>👨‍👧‍👦</Text>
@@ -104,7 +105,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
           3초만에 가입하고 아빠들의 이야기에 참여하세요
         </Text>
       </Animated.View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -153,7 +154,7 @@ const makeStyles = (theme: Theme) =>
       marginTop: theme.spacing.sm,
     },
     buttonSection: {
-      paddingBottom: 60,
+      paddingBottom: theme.spacing['2xl'],
       gap: theme.spacing.md,
     },
     googleBtn: {

@@ -1,5 +1,9 @@
 import React, {useEffect} from 'react';
-import {StatusBar} from 'react-native';
+import {LogBox, StatusBar} from 'react-native';
+
+if (!__DEV__) {
+  LogBox.ignoreAllLogs();
+}
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {ThemeProvider, useTheme} from './src/theme';
