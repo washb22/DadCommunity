@@ -58,7 +58,7 @@ export default function EditProfileScreen({navigation}: EditProfileScreenProps) 
 
   return (
     <SafeAreaView style={s.container}>
-      <View style={[s.header, {paddingTop: insets.top}]}>
+      <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={s.cancelText}>취소</Text>
         </TouchableOpacity>

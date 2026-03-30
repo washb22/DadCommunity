@@ -513,6 +513,6 @@ const makeStyles = (theme: Theme) =>
     modalDeleteText: {
       ...theme.typography.body,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: theme.colors.onPrimary,
     },
   });

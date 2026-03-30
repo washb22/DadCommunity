@@ -196,7 +196,7 @@ const makeStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'row',
-      backgroundColor: '#FFFFFF',
+      backgroundColor: theme.colors.surface,
       gap: theme.spacing.sm,
       ...theme.shadows.level2,
     },

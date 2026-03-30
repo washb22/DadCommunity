@@ -1,6 +1,5 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useTheme, Theme} from '../theme';
 
@@ -26,7 +25,6 @@ export default function Header({
   backgroundColor,
 }: HeaderProps) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const s = makeStyles(theme);
 
   const bg = backgroundColor || theme.colors.surface;

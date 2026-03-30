@@ -211,8 +211,6 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
     [state.uid, dispatch],
   );
 
-  const unreadNotifs = state.notifications.filter(n => !n.read).length;
-
   if (loading) {
     return (
       <SafeAreaView style={s.container}>
