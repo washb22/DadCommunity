@@ -145,13 +145,14 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   }, [activeTab, activeCategory, dispatch, enrichPosts]);
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || loadingMore || activeTab === '인기') return;
+    if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     try {
       const category = activeCategory !== '전체' ? activeCategory : undefined;
+      const sortBy = activeTab === '인기' ? 'popular' : 'latest';
       const result = await postService.fetchPosts(
         category,
-        'latest',
+        sortBy as 'latest' | 'popular',
         lastDoc,
         20,
       );

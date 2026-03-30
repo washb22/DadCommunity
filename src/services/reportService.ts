@@ -39,12 +39,44 @@ export async function unblockUser(
   await blocksRef.doc(`${currentUserId}_${blockedUserId}`).delete();
 }
 
+export interface BlockedUserInfo {
+  userId: string;
+  nickname: string;
+  avatar: string;
+}
+
 export async function getBlockedUsers(userId: string): Promise<string[]> {
   const snapshot = await blocksRef
     .where('blocker', '==', userId)
     .get();
 
   return snapshot.docs.map(doc => doc.data().blocked);
+}
+
+export async function getBlockedUsersWithInfo(userId: string): Promise<BlockedUserInfo[]> {
+  const snapshot = await blocksRef
+    .where('blocker', '==', userId)
+    .get();
+
+  const blockedIds = snapshot.docs.map(doc => doc.data().blocked);
+  if (blockedIds.length === 0) return [];
+
+  const usersRef = firestore().collection('users');
+  const results: BlockedUserInfo[] = [];
+  for (const uid of blockedIds) {
+    try {
+      const userDoc = await usersRef.doc(uid).get();
+      const data = userDoc.data();
+      results.push({
+        userId: uid,
+        nickname: data?.nickname || '알 수 없는 사용자',
+        avatar: data?.avatar || '🧔',
+      });
+    } catch {
+      results.push({userId: uid, nickname: '알 수 없는 사용자', avatar: '🧔'});
+    }
+  }
+  return results;
 }
 
 export async function isBlocked(

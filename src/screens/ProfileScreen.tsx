@@ -117,7 +117,7 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
       <Header
         title="마이페이지"
         rightIcon="settings-outline"
-        onRightPress={() => {}}
+        onRightPress={() => navigation.navigate('NotificationSettings')}
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>

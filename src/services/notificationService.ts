@@ -1,4 +1,6 @@
 import messaging from '@react-native-firebase/messaging';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 import {Alert, Platform} from 'react-native';
 
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -45,8 +47,13 @@ export async function setupNotifications() {
 
     const token = await getFCMToken();
     if (token) {
-      console.log('FCM Token:', token);
-      // TODO: Send token to your server for push notification targeting
+      const user = auth().currentUser;
+      if (user) {
+        await firestore().collection('users').doc(user.uid).set(
+          {fcmToken: token, fcmTokenUpdatedAt: firestore.FieldValue.serverTimestamp()},
+          {merge: true},
+        );
+      }
     }
 
     // Handle foreground messages

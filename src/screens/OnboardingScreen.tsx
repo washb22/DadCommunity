@@ -133,6 +133,8 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
           nickname: nickname.trim(),
           avatar,
           childAgeGroup: childInfo.ageGroup,
+          childGender: childInfo.gender,
+          childCount: childInfo.count,
           interests: selectedInterests,
         },
       });

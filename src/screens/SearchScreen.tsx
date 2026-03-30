@@ -75,7 +75,7 @@ export default function SearchScreen({navigation}: SearchScreenProps) {
         const snapshot = await firestore()
           .collection('posts')
           .orderBy('timestamp', 'desc')
-          .limit(200)
+          .limit(500)
           .get();
 
         const allPosts = snapshot.docs.map(doc => ({

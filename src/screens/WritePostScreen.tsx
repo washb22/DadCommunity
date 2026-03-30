@@ -90,6 +90,8 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
             imageUrls = await uploadPostImages(tempId, images);
           } catch (error) {
             console.error('Image upload failed:', error);
+            Alert.alert('오류', '이미지 업로드에 실패했습니다. 다시 시도해주세요.');
+            return;
           }
         }
 
@@ -138,6 +140,10 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
   };
 
   const handlePickImage = async () => {
+    if (images.length >= 5) {
+      Alert.alert('알림', '이미지는 최대 5장까지 첨부할 수 있습니다.');
+      return;
+    }
     try {
       const {pickImage} = require('../services/storageService');
       const uri = await pickImage();
@@ -150,6 +156,10 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
   };
 
   const handleTakePhoto = async () => {
+    if (images.length >= 5) {
+      Alert.alert('알림', '이미지는 최대 5장까지 첨부할 수 있습니다.');
+      return;
+    }
     try {
       const {takePhoto} = require('../services/storageService');
       const uri = await takePhoto();

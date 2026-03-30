@@ -70,10 +70,10 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
 
   if (loading) {
     return (
-      <View style={[s.container, s.loadingContainer]}>
+      <SafeAreaView style={[s.container, s.loadingContainer]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text style={s.loadingText}>로그인 중...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 

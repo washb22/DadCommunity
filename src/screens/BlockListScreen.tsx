@@ -21,6 +21,7 @@ export default function BlockListScreen({navigation}: BlockListScreenProps) {
   const theme = useTheme();
   const s = makeStyles(theme);
   const [loading, setLoading] = useState(true);
+  const [blockedUsersInfo, setBlockedUsersInfo] = useState<reportService.BlockedUserInfo[]>([]);
 
   // Load blocked users from Firestore on mount
   useEffect(() => {
@@ -29,9 +30,10 @@ export default function BlockListScreen({navigation}: BlockListScreenProps) {
       return;
     }
     reportService
-      .getBlockedUsers(state.uid)
-      .then(blockedIds => {
-        dispatch({type: 'SET_BLOCKED_USERS', blockedUsers: blockedIds});
+      .getBlockedUsersWithInfo(state.uid)
+      .then(users => {
+        setBlockedUsersInfo(users);
+        dispatch({type: 'SET_BLOCKED_USERS', blockedUsers: users.map(u => u.userId)});
       })
       .catch(error => {
         console.error('Failed to fetch blocked users:', error);
@@ -79,7 +81,7 @@ export default function BlockListScreen({navigation}: BlockListScreenProps) {
         onBack={() => navigation.goBack()}
       />
 
-      {state.blockedUsers.length === 0 ? (
+      {blockedUsersInfo.length === 0 ? (
         <EmptyState
           icon="ban-outline"
           title="차단한 사용자가 없습니다"
@@ -87,19 +89,19 @@ export default function BlockListScreen({navigation}: BlockListScreenProps) {
         />
       ) : (
         <FlatList
-          data={state.blockedUsers}
-          keyExtractor={item => item}
+          data={blockedUsersInfo}
+          keyExtractor={item => item.userId}
           renderItem={({item}) => (
             <View style={s.item}>
               <View style={s.userInfo}>
                 <View style={s.avatar}>
-                  <Text style={s.avatarText}>🧔</Text>
+                  <Text style={s.avatarText}>{item.avatar}</Text>
                 </View>
-                <Text style={s.userName}>{item}</Text>
+                <Text style={s.userName}>{item.nickname}</Text>
               </View>
               <TouchableOpacity
                 style={s.unblockBtn}
-                onPress={() => handleUnblock(item)}>
+                onPress={() => handleUnblock(item.userId)}>
                 <Text style={s.unblockText}>차단 해제</Text>
               </TouchableOpacity>
             </View>

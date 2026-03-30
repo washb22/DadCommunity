@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -16,6 +17,8 @@ import {useTheme, Theme} from '../theme';
 import firestore from '@react-native-firebase/firestore';
 import {uploadProfileImage, pickImage} from '../services/storageService';
 import type {EditProfileScreenProps} from '../navigation/types';
+
+const isUrl = (str: string) => str.startsWith('http://') || str.startsWith('https://');
 
 const AVATARS = ['🧔', '👨', '👴', '🧑', '👨‍🦳', '👨‍🍳', '💪', '🏕️', '⛺', '🎮', '🎸', '📚'];
 
@@ -95,10 +98,14 @@ export default function EditProfileScreen({navigation}: EditProfileScreenProps) 
                     }
                   },
                 },
-                {text: '아이콘 선택하기', style: 'cancel'},
+                {text: '취소', style: 'cancel'},
               ]);
             }}>
-            <Text style={s.currentAvatarText}>{avatar}</Text>
+            {isUrl(avatar) ? (
+              <Image source={{uri: avatar}} style={s.currentAvatarImage} />
+            ) : (
+              <Text style={s.currentAvatarText}>{avatar}</Text>
+            )}
             <View style={s.cameraIcon}>
               <Icon name="camera" size={14} color={theme.colors.onPrimary} />
             </View>
@@ -198,6 +205,11 @@ const makeStyles = (theme: Theme) =>
     },
     currentAvatarText: {
       fontSize: 36,
+    },
+    currentAvatarImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
     },
     cameraIcon: {
       position: 'absolute',

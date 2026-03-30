@@ -16,6 +16,7 @@ import {
   INITIAL_USER,
 } from '../data/mockData';
 import {getUserProfile} from '../services/authService';
+import {getBlockedUsers} from '../services/reportService';
 
 // ─── Types ───
 export interface Notification {
@@ -305,6 +306,10 @@ export function AppProvider({children}: {children: ReactNode}) {
               user: profile,
               uid: firebaseUser.uid,
             });
+            // Load blocked users list
+            getBlockedUsers(firebaseUser.uid)
+              .then(blockedUsers => dispatch({type: 'SET_BLOCKED_USERS', blockedUsers}))
+              .catch(() => {});
           } else {
             // User authenticated but no profile yet (first time)
             dispatch({type: 'LOGIN', uid: firebaseUser.uid});
