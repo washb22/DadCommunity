@@ -113,7 +113,7 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
   };
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       <Header
         title="마이페이지"
         rightIcon="settings-outline"

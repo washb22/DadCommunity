@@ -214,7 +214,7 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
         <Header
           title="아빠의 다락방"
           rightIcon2="notifications-outline"
@@ -230,7 +230,7 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   }
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       <Header
         title="아빠의 다락방"
         rightIcon2="notifications-outline"

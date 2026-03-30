@@ -22,7 +22,7 @@ export default function BoardListScreen({navigation}: BoardListScreenProps) {
   const boardColors = theme.colors.boardColors;
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       <Header
         title="게시판"
         rightIcon="search-outline"

@@ -61,7 +61,7 @@ export default function ChatListScreen({navigation}: ChatListScreenProps) {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
         <Header title="채팅" />
         <View style={s.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -71,7 +71,7 @@ export default function ChatListScreen({navigation}: ChatListScreenProps) {
   }
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       <Header title="채팅" />
 
       {chatRooms.length === 0 ? (
