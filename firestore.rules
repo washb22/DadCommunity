@@ -83,6 +83,12 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.blocker == request.auth.uid;
     }
 
+    // Contacts - 생성은 모든 유저, 읽기/수정은 관리자만
+    match /contacts/{contactId} {
+      allow create: if request.auth != null;
+      allow read, update: if isAdmin();
+    }
+
     // Push Requests & Logs - 관리자만
     match /pushRequests/{docId} {
       allow read, write: if isAdmin();
