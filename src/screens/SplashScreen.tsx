@@ -1,10 +1,22 @@
-import React, {useEffect, useRef} from 'react';
-import {View, Text, StyleSheet, Animated} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {View, Text, StyleSheet, Animated, Modal, TouchableOpacity, Linking, Platform, BackHandler} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import type {SplashScreenProps} from '../navigation/types';
+
+const APP_VERSION = '1.0.0';
+
+function compareVersions(current: string, minimum: string): boolean {
+  const c = current.split('.').map(Number);
+  const m = minimum.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((c[i] || 0) < (m[i] || 0)) return true;
+    if ((c[i] || 0) > (m[i] || 0)) return false;
+  }
+  return false;
+}
 
 export default function SplashScreen({navigation}: SplashScreenProps) {
   const {state} = useApp();
@@ -13,6 +25,9 @@ export default function SplashScreen({navigation}: SplashScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const [updateRequired, setUpdateRequired] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [storeUrl, setStoreUrl] = useState('');
 
   useEffect(() => {
     Animated.parallel([
@@ -34,6 +49,25 @@ export default function SplashScreen({navigation}: SplashScreenProps) {
     if (!state.isFirebaseReady) return;
 
     const timer = setTimeout(async () => {
+      // Check force update
+      try {
+        const versionDoc = await firestore().collection('appConfig').doc('appVersion').get();
+        if ((versionDoc as any).exists) {
+          const v = versionDoc.data();
+          if (v?.forceUpdateEnabled) {
+            const minVersion = Platform.OS === 'ios' ? v.minVersionIos : v.minVersionAndroid;
+            if (minVersion && compareVersions(APP_VERSION, minVersion)) {
+              setUpdateMessage(v.updateMessage || '새로운 버전이 출시되었습니다.\n원활한 이용을 위해 업데이트해주세요.');
+              setStoreUrl(Platform.OS === 'ios' ? (v.appStoreUrl || '') : (v.playStoreUrl || ''));
+              setUpdateRequired(true);
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Version check failed:', e);
+      }
+
       if (state.isLoggedIn && state.uid) {
         try {
           const userDoc = await firestore()
@@ -56,6 +90,16 @@ export default function SplashScreen({navigation}: SplashScreenProps) {
     return () => clearTimeout(timer);
   }, [state.isFirebaseReady, state.isLoggedIn, state.uid, navigation]);
 
+  // Block back button when update required
+  useEffect(() => {
+    if (!updateRequired) return;
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      BackHandler.exitApp();
+      return true;
+    });
+    return () => handler.remove();
+  }, [updateRequired]);
+
   return (
     <View style={s.container}>
       <Animated.View
@@ -72,6 +116,26 @@ export default function SplashScreen({navigation}: SplashScreenProps) {
       <Animated.Text style={[s.footer, {opacity: fadeAnim, bottom: Math.max(40, insets.bottom + 16)}]}>
         Dad Community
       </Animated.Text>
+
+      <Modal visible={updateRequired} transparent animationType="fade">
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalIcon}>🔄</Text>
+            <Text style={s.modalTitle}>업데이트 필요</Text>
+            <Text style={s.modalMessage}>{updateMessage}</Text>
+            <Text style={s.modalVersion}>현재 버전: {APP_VERSION}</Text>
+            <TouchableOpacity
+              style={s.modalButton}
+              onPress={() => {
+                if (storeUrl) {
+                  Linking.openURL(storeUrl);
+                }
+              }}>
+              <Text style={s.modalButtonText}>업데이트 하기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -115,5 +179,53 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.captionSmall,
       color: theme.colors.textTertiary,
       letterSpacing: 2,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalBox: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 20,
+      padding: 32,
+      width: '85%',
+      alignItems: 'center',
+    },
+    modalIcon: {
+      fontSize: 48,
+      marginBottom: 16,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700' as const,
+      color: theme.colors.textPrimary,
+      marginBottom: 12,
+    },
+    modalMessage: {
+      fontSize: 15,
+      color: theme.colors.textSecondary,
+      textAlign: 'center' as const,
+      lineHeight: 22,
+      marginBottom: 8,
+    },
+    modalVersion: {
+      fontSize: 12,
+      color: theme.colors.textTertiary,
+      marginBottom: 24,
+    },
+    modalButton: {
+      backgroundColor: theme.colors.primary,
+      paddingVertical: 14,
+      paddingHorizontal: 48,
+      borderRadius: 12,
+      width: '100%',
+      alignItems: 'center' as const,
+    },
+    modalButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600' as const,
     },
   });

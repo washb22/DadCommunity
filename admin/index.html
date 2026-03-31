@@ -139,6 +139,17 @@
     .loading { text-align: center; padding: 48px; color: #888; }
     .truncate { max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+    /* Pagination */
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; }
+    .pagination button {
+      min-width: 36px; height: 36px; border: 1px solid #ddd; border-radius: 8px;
+      background: #fff; color: #333; cursor: pointer; font-size: 13px; transition: all 0.2s;
+    }
+    .pagination button:hover:not(:disabled) { background: #667eea; color: #fff; border-color: #667eea; }
+    .pagination button.active { background: #667eea; color: #fff; border-color: #667eea; font-weight: 700; }
+    .pagination button:disabled { opacity: 0.4; cursor: default; }
+    .pagination .page-info { font-size: 13px; color: #888; margin: 0 8px; }
+
     .notif-form textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; }
     .notif-form input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 12px; }
 
@@ -311,6 +322,7 @@
           <thead><tr><th>제목</th><th>작성자</th><th>카테고리</th><th>좋아요</th><th>댓글</th><th>작성일</th><th>관리</th></tr></thead>
           <tbody id="postsTable"><tr><td colspan="7" class="loading">로딩 중...</td></tr></tbody>
         </table>
+        <div class="pagination" id="postsPagination"></div>
       </div>
     </div>
 
@@ -326,6 +338,7 @@
           <thead><tr><th>내용</th><th>작성자</th><th>게시글</th><th>작성일</th><th>관리</th></tr></thead>
           <tbody id="commentsTable"><tr><td colspan="5" class="loading">로딩 중...</td></tr></tbody>
         </table>
+        <div class="pagination" id="commentsPagination"></div>
       </div>
     </div>
 
@@ -798,21 +811,31 @@ async function toggleBan(uid, ban) {
 
 // ==================== POSTS ====================
 let allPosts = [];
+let postsPage = 1;
+const POSTS_PER_PAGE = 50;
+let filteredPosts = [];
 async function loadPosts() {
-  try { const snap = await db.collection('posts').orderBy('timestamp', 'desc').get(); allPosts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderPosts(allPosts); }
+  try { const snap = await db.collection('posts').orderBy('timestamp', 'desc').get(); allPosts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })); filteredPosts = allPosts; postsPage = 1; renderPosts(filteredPosts); }
   catch (e) { document.getElementById('postsTable').innerHTML = '<tr><td colspan="7" class="empty">불러올 수 없습니다</td></tr>'; }
 }
 function renderPosts(posts) {
-  if (!posts.length) { document.getElementById('postsTable').innerHTML = '<tr><td colspan="7" class="empty">게시글이 없습니다</td></tr>'; return; }
-  document.getElementById('postsTable').innerHTML = posts.map(p => `<tr>
+  if (!posts.length) { document.getElementById('postsTable').innerHTML = '<tr><td colspan="7" class="empty">게시글이 없습니다</td></tr>'; document.getElementById('postsPagination').innerHTML = ''; return; }
+  const totalPages = Math.ceil(posts.length / POSTS_PER_PAGE);
+  if (postsPage > totalPages) postsPage = totalPages;
+  const start = (postsPage - 1) * POSTS_PER_PAGE;
+  const pageData = posts.slice(start, start + POSTS_PER_PAGE);
+  document.getElementById('postsTable').innerHTML = pageData.map(p => `<tr>
     <td class="truncate">${esc(p.title)||'(제목 없음)'}</td><td>${p.isAnonymous?'익명':esc(p.user)||'-'}</td>
     <td><span class="badge-category">${esc(p.category)||'-'}</span></td><td>${p.likes||0}</td><td>${p.commentCount||0}</td>
     <td>${formatDateShort(p.timestamp||p.createdAt)}</td>
     <td class="actions"><button class="btn btn-sm btn-primary" data-pid="${esc(p.id)}" onclick="viewPost(this.dataset.pid)">상세</button><button class="btn btn-sm btn-danger" data-pid="${esc(p.id)}" onclick="deletePost(this.dataset.pid)">삭제</button></td></tr>`).join('');
+  renderPagination('postsPagination', postsPage, totalPages, posts.length, (p) => { postsPage = p; renderPosts(filteredPosts); });
 }
 document.getElementById('postSearch').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
-  renderPosts(allPosts.filter(p => (p.title||'').toLowerCase().includes(q) || (p.text||'').toLowerCase().includes(q)));
+  filteredPosts = allPosts.filter(p => (p.title||'').toLowerCase().includes(q) || (p.text||'').toLowerCase().includes(q));
+  postsPage = 1;
+  renderPosts(filteredPosts);
 });
 async function viewPost(postId) {
   const doc = await db.collection('posts').doc(postId).get();
@@ -834,12 +857,15 @@ async function deletePost(postId) {
 
 // ==================== COMMENTS ====================
 let allComments = [];
+let commentsPage = 1;
+const COMMENTS_PER_PAGE = 50;
+let filteredComments = [];
 async function loadComments() {
   try {
     const postsSnap = await db.collection('posts').get();
     allComments = [];
     const promises = postsSnap.docs.map(async (postDoc) => {
-      const commentsSnap = await postDoc.ref.collection('comments').orderBy('timestamp', 'desc').limit(10).get();
+      const commentsSnap = await postDoc.ref.collection('comments').orderBy('timestamp', 'desc').get();
       commentsSnap.docs.forEach(cDoc => {
         allComments.push({ id: cDoc.id, postId: postDoc.id, postTitle: postDoc.data().title || '(제목 없음)', ...cDoc.data() });
       });
@@ -850,27 +876,70 @@ async function loadComments() {
       const tb = b.timestamp ? (b.timestamp.toDate ? b.timestamp.toDate() : new Date(b.timestamp)) : new Date(0);
       return tb - ta;
     });
-    renderComments(allComments);
+    filteredComments = allComments;
+    commentsPage = 1;
+    renderComments(filteredComments);
   } catch (e) { console.error('Comments error:', e); document.getElementById('commentsTable').innerHTML = '<tr><td colspan="5" class="empty">불러올 수 없습니다</td></tr>'; }
 }
 function renderComments(comments) {
-  if (!comments.length) { document.getElementById('commentsTable').innerHTML = '<tr><td colspan="5" class="empty">댓글이 없습니다</td></tr>'; return; }
-  document.getElementById('commentsTable').innerHTML = comments.slice(0, 50).map(c => `<tr>
+  if (!comments.length) { document.getElementById('commentsTable').innerHTML = '<tr><td colspan="5" class="empty">댓글이 없습니다</td></tr>'; document.getElementById('commentsPagination').innerHTML = ''; return; }
+  const totalPages = Math.ceil(comments.length / COMMENTS_PER_PAGE);
+  if (commentsPage > totalPages) commentsPage = totalPages;
+  const start = (commentsPage - 1) * COMMENTS_PER_PAGE;
+  const pageData = comments.slice(start, start + COMMENTS_PER_PAGE);
+  document.getElementById('commentsTable').innerHTML = pageData.map(c => `<tr>
     <td class="truncate" style="max-width:250px;">${esc(c.text) || '-'}</td>
     <td>${esc(c.user) || '익명'}</td>
     <td class="truncate" style="max-width:150px;">${esc(c.postTitle)}</td>
     <td>${formatDate(c.timestamp)}</td>
     <td class="actions"><button class="btn btn-sm btn-danger" data-pid="${esc(c.postId)}" data-cid="${esc(c.id)}" onclick="deleteComment(this.dataset.pid,this.dataset.cid)">삭제</button></td></tr>`).join('');
+  renderPagination('commentsPagination', commentsPage, totalPages, comments.length, (p) => { commentsPage = p; renderComments(filteredComments); });
 }
 document.getElementById('commentSearch').addEventListener('input', (e) => {
   const q = e.target.value.toLowerCase();
-  renderComments(allComments.filter(c => (c.text||'').toLowerCase().includes(q)));
+  filteredComments = allComments.filter(c => (c.text||'').toLowerCase().includes(q));
+  commentsPage = 1;
+  renderComments(filteredComments);
 });
 async function deleteComment(postId, commentId) {
   if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
   await db.collection('posts').doc(postId).collection('comments').doc(commentId).delete();
   await db.collection('posts').doc(postId).update({ commentCount: firebase.firestore.FieldValue.increment(-1) });
   loadComments();
+}
+
+// ==================== PAGINATION ====================
+function renderPagination(containerId, currentPage, totalPages, totalItems, onPageChange) {
+  const el = document.getElementById(containerId);
+  if (totalPages <= 1) { el.innerHTML = `<span class="page-info">총 ${totalItems}건</span>`; return; }
+  let html = `<button ${currentPage===1?'disabled':''} onclick="void(0)">&laquo;</button>`;
+  html += `<button ${currentPage===1?'disabled':''} onclick="void(0)">&lsaquo;</button>`;
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+  if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+  if (startPage > 1) html += `<button onclick="void(0)">1</button>`;
+  if (startPage > 2) html += `<span style="padding:0 4px;color:#aaa;">...</span>`;
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="${i===currentPage?'active':''}" onclick="void(0)">${i}</button>`;
+  }
+  if (endPage < totalPages - 1) html += `<span style="padding:0 4px;color:#aaa;">...</span>`;
+  if (endPage < totalPages) html += `<button onclick="void(0)">${totalPages}</button>`;
+  html += `<button ${currentPage===totalPages?'disabled':''} onclick="void(0)">&rsaquo;</button>`;
+  html += `<button ${currentPage===totalPages?'disabled':''} onclick="void(0)">&raquo;</button>`;
+  html += `<span class="page-info">${totalItems}건 중 ${(currentPage-1)*50+1}-${Math.min(currentPage*50, totalItems)}</span>`;
+  el.innerHTML = html;
+  const buttons = el.querySelectorAll('button');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      const text = btn.textContent.trim();
+      if (text === '«') onPageChange(1);
+      else if (text === '‹') onPageChange(currentPage - 1);
+      else if (text === '›') onPageChange(currentPage + 1);
+      else if (text === '»') onPageChange(totalPages);
+      else onPageChange(parseInt(text));
+    });
+  });
 }
 
 // ==================== REPORTS ====================
