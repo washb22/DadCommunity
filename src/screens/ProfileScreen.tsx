@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
@@ -56,6 +57,34 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteNicknameInput, setDeleteNicknameInput] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [stats, setStats] = useState({postCount: 0, likeCount: 0, saveCount: 0});
+
+  useEffect(() => {
+    if (!state.uid) return;
+    const fetchStats = async () => {
+      try {
+        const snapshot = await firestore()
+          .collection('posts')
+          .where('userId', '==', state.uid)
+          .get();
+        let totalLikes = 0;
+        let totalSaves = 0;
+        snapshot.docs.forEach(doc => {
+          const data = doc.data();
+          totalLikes += data.likes || 0;
+          totalSaves += Array.isArray(data.savedBy) ? data.savedBy.length : 0;
+        });
+        setStats({
+          postCount: snapshot.size,
+          likeCount: totalLikes,
+          saveCount: totalSaves,
+        });
+      } catch (error) {
+        console.warn('Failed to fetch stats:', error);
+      }
+    };
+    fetchStats();
+  }, [state.uid]);
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -151,17 +180,17 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
 
           <View style={s.stats}>
             <View style={s.stat}>
-              <Text style={s.statNum}>{user.postCount}</Text>
+              <Text style={s.statNum}>{stats.postCount}</Text>
               <Text style={s.statLabel}>게시글</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.stat}>
-              <Text style={s.statNum}>{user.likeCount}</Text>
+              <Text style={s.statNum}>{stats.likeCount}</Text>
               <Text style={s.statLabel}>받은 좋아요</Text>
             </View>
             <View style={s.statDivider} />
             <View style={s.stat}>
-              <Text style={s.statNum}>{user.saveCount}</Text>
+              <Text style={s.statNum}>{stats.saveCount}</Text>
               <Text style={s.statLabel}>저장</Text>
             </View>
           </View>
