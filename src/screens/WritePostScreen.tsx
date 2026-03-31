@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {
   View,
   Text,
@@ -49,6 +49,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
   const [submitting, setSubmitting] = useState(false);
   const [pollEnabled, setPollEnabled] = useState(false);
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const scrollRef = useRef<ScrollView>(null);
 
   const handleSubmit = async () => {
     if (!selectedBoard) {
@@ -212,7 +213,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
     <SafeAreaView style={s.container}>
       <KeyboardAvoidingView
         style={{flex: 1}}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={handleCancel} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
@@ -238,7 +239,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={s.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} style={s.content} keyboardShouldPersistTaps="handled">
         {/* Board Selector */}
         <TouchableOpacity
           style={s.boardSelector}
@@ -342,6 +343,9 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
                     const next = [...pollOptions];
                     next[idx] = text;
                     setPollOptions(next);
+                  }}
+                  onFocus={() => {
+                    setTimeout(() => scrollRef.current?.scrollToEnd({animated: true}), 300);
                   }}
                   maxLength={30}
                 />
