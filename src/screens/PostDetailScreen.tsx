@@ -225,7 +225,7 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
     if (!state.uid) return;
     dispatch({type: 'TOGGLE_LIKE', postId: post.id});
     try {
-      await postService.toggleLike(post.id, state.uid);
+      await postService.toggleLike(post.id, state.uid, state.user?.nickname || undefined);
     } catch (error) {
       dispatch({type: 'TOGGLE_LIKE', postId: post.id});
       console.error('Failed to toggle like:', error);
@@ -240,17 +240,6 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
     } catch (error) {
       dispatch({type: 'TOGGLE_SAVE', postId: post.id});
       console.error('Failed to toggle save:', error);
-    }
-  };
-
-  const handleToggleEmpathy = async () => {
-    if (!state.uid) return;
-    dispatch({type: 'TOGGLE_EMPATHY', postId: post.id});
-    try {
-      await postService.toggleEmpathy(post.id, state.uid);
-    } catch (error) {
-      dispatch({type: 'TOGGLE_EMPATHY', postId: post.id});
-      console.error('Failed to toggle empathy:', error);
     }
   };
 
@@ -432,6 +421,49 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
               ) : null}
               <Text style={s.postText}>{post.text}</Text>
 
+              {post.poll && post.poll.options.length >= 2 && (
+                <View style={s.pollSection}>
+                  {post.poll.options.map((opt, idx) => {
+                    const total = post.poll!.totalVotes || 0;
+                    const count = post.poll!.votes?.[String(idx)] || 0;
+                    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const myVote = state.uid ? post.poll!.votedBy?.[state.uid] : undefined;
+                    const hasVoted = myVote !== undefined;
+                    const isMyChoice = myVote === idx;
+
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          s.pollOption,
+                          isMyChoice && {borderColor: theme.colors.primary},
+                        ]}
+                        disabled={hasVoted}
+                        onPress={async () => {
+                          if (!state.uid) return;
+                          await postService.votePoll(post.id, state.uid, idx);
+                          const updated = await postService.fetchPostById(post.id);
+                          if (updated) {
+                            dispatch({type: 'SET_POSTS', posts: state.posts.map(p => p.id === post.id ? {...p, poll: updated.poll} : p)});
+                          }
+                        }}
+                        activeOpacity={hasVoted ? 1 : 0.7}>
+                        {hasVoted && (
+                          <View style={[s.pollFill, {width: `${pct}%`} as any]} />
+                        )}
+                        <Text style={[s.pollText, isMyChoice && {fontWeight: '700', color: theme.colors.primary}]}>
+                          {opt}
+                        </Text>
+                        {hasVoted && (
+                          <Text style={s.pollPct}>{pct}%</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                  <Text style={s.pollTotal}>{post.poll.totalVotes || 0}명 참여</Text>
+                </View>
+              )}
+
               {post.images && post.images.length > 0 && (
                 <FlatList
                   horizontal
@@ -481,24 +513,6 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                   </View>
                 </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[
-                  s.empathyBanner,
-                  post.empathized && {backgroundColor: theme.colors.accentLight},
-                ]}
-                onPress={handleToggleEmpathy}
-                activeOpacity={0.7}>
-                <Icon
-                  name={post.empathized ? 'hand-left' : 'hand-left-outline'}
-                  size={24}
-                  color={post.empathized ? theme.colors.accent : theme.colors.primary}
-                />
-                <View>
-                  <Text style={[s.empathyTitle, post.empathized && {color: theme.colors.accent}]}>나도 그래요</Text>
-                  <Text style={s.empathySub}>{post.empathyCount || 0}명이 공감했어요</Text>
-                </View>
-              </TouchableOpacity>
 
               <View style={s.commentsHeader}>
                 <Text style={s.commentsTitle}>
@@ -714,6 +728,46 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
       marginBottom: theme.spacing.base,
     },
+    pollSection: {
+      marginTop: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    pollOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.md,
+      height: 44,
+      overflow: 'hidden',
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+    },
+    pollFill: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: theme.colors.secondary,
+      borderRadius: theme.radius.md,
+    },
+    pollText: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+      paddingHorizontal: theme.spacing.md,
+      flex: 1,
+      zIndex: 1,
+    },
+    pollPct: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+      paddingRight: theme.spacing.md,
+      zIndex: 1,
+    },
+    pollTotal: {
+      ...theme.typography.caption,
+      color: theme.colors.textTertiary,
+    },
     imageList: {
       marginBottom: theme.spacing.base,
     },
@@ -744,24 +798,6 @@ const makeStyles = (theme: Theme) =>
     },
     actionActive: {
       color: theme.colors.error,
-    },
-    empathyBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.colors.secondary,
-      borderRadius: theme.radius.md,
-      padding: theme.spacing.md,
-      marginTop: theme.spacing.md,
-      gap: theme.spacing.sm,
-    },
-    empathyTitle: {
-      ...theme.typography.h3,
-      fontWeight: '700',
-      color: theme.colors.primary,
-    },
-    empathySub: {
-      ...theme.typography.caption,
-      color: theme.colors.textSecondary,
     },
     commentsHeader: {
       marginTop: theme.spacing.lg,

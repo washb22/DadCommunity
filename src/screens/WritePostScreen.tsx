@@ -47,6 +47,8 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
   const [showBoardPicker, setShowBoardPicker] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [pollEnabled, setPollEnabled] = useState(false);
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
 
   const handleSubmit = async () => {
     if (!selectedBoard) {
@@ -95,6 +97,19 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
           }
         }
 
+        // 투표 데이터 준비
+        const validPollOptions = pollEnabled
+          ? pollOptions.map(o => o.trim()).filter(o => o.length > 0)
+          : [];
+        const pollData = validPollOptions.length >= 2
+          ? {
+              options: validPollOptions,
+              votes: {},
+              votedBy: {},
+              totalVotes: 0,
+            }
+          : undefined;
+
         const newPostId = await postService.createPost({
           user: isAnonymous ? '익명의 아빠' : state.user.nickname,
           userId: state.uid,
@@ -105,6 +120,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
           isAnonymous,
           images: imageUrls,
           authorAgeGroup: isAnonymous ? undefined : state.user.childAgeGroup,
+          poll: pollData,
         });
 
         dispatch({
@@ -125,6 +141,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
             liked: false,
             images: imageUrls,
             authorAgeGroup: isAnonymous ? undefined : state.user.childAgeGroup,
+            poll: pollData,
           },
         });
 
@@ -310,6 +327,44 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
           </View>
         )}
 
+        {/* Poll Options */}
+        {pollEnabled && (
+          <View style={s.pollSection}>
+            <Text style={s.pollTitle}>투표 항목</Text>
+            {pollOptions.map((opt, idx) => (
+              <View key={idx} style={s.pollOptionRow}>
+                <TextInput
+                  style={s.pollInput}
+                  placeholder={`항목 ${idx + 1}`}
+                  placeholderTextColor={theme.colors.textTertiary}
+                  value={opt}
+                  onChangeText={text => {
+                    const next = [...pollOptions];
+                    next[idx] = text;
+                    setPollOptions(next);
+                  }}
+                  maxLength={30}
+                />
+                {pollOptions.length > 2 && (
+                  <TouchableOpacity
+                    onPress={() => setPollOptions(prev => prev.filter((_, i) => i !== idx))}
+                    hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                    <Icon name="close-circle" size={20} color={theme.colors.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            {pollOptions.length < 5 && (
+              <TouchableOpacity
+                style={s.pollAddBtn}
+                onPress={() => setPollOptions(prev => [...prev, ''])}>
+                <Icon name="add-circle-outline" size={18} color={theme.colors.primary} />
+                <Text style={s.pollAddText}>항목 추가</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Attachments */}
         <View style={s.attachments}>
           <TouchableOpacity
@@ -321,8 +376,14 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
           <TouchableOpacity style={s.attachBtn} activeOpacity={0.7} onPress={() => Alert.alert('알림', '영상 첨부 기능은 준비 중입니다.')}>
             <View style={s.attachContent}><Icon name="videocam-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 영상</Text></View>
           </TouchableOpacity>
-          <TouchableOpacity style={s.attachBtn} activeOpacity={0.7} onPress={() => Alert.alert('알림', '투표 기능은 준비 중입니다.')}>
-            <View style={s.attachContent}><Icon name="bar-chart-outline" size={16} color={theme.colors.textSecondary} /><Text style={s.attachText}> 투표</Text></View>
+          <TouchableOpacity
+            style={[s.attachBtn, pollEnabled && {backgroundColor: theme.colors.secondary}]}
+            activeOpacity={0.7}
+            onPress={() => setPollEnabled(!pollEnabled)}>
+            <View style={s.attachContent}>
+              <Icon name="bar-chart-outline" size={16} color={pollEnabled ? theme.colors.primary : theme.colors.textSecondary} />
+              <Text style={[s.attachText, pollEnabled && {color: theme.colors.primary}]}> 투표</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -513,6 +574,46 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.caption,
       color: theme.colors.textPrimary,
       flex: 1,
+    },
+    pollSection: {
+      marginBottom: theme.spacing.md,
+      padding: theme.spacing.md,
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.md,
+    },
+    pollTitle: {
+      ...theme.typography.bodySmall,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.sm,
+    },
+    pollOptionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.sm,
+    },
+    pollInput: {
+      flex: 1,
+      ...theme.typography.bodySmall,
+      color: theme.colors.textPrimary,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.sm,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    pollAddBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.xs,
+    },
+    pollAddText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     imageRemoveBtn: {
       position: 'absolute',

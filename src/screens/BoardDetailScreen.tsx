@@ -119,7 +119,7 @@ export default function BoardDetailScreen({route, navigation}: BoardDetailScreen
         ),
       );
       try {
-        await postService.toggleLike(postId, state.uid);
+        await postService.toggleLike(postId, state.uid, state.user?.nickname || undefined);
       } catch (error) {
         // Revert on failure
         setPosts(prev =>

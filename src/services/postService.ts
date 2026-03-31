@@ -2,6 +2,36 @@ import firestore, {FirebaseFirestoreTypes} from '@react-native-firebase/firestor
 import {Post, Comment, Reply, getRelativeTime} from '../data/mockData';
 
 const postsRef = firestore().collection('posts');
+const notificationsRef = firestore().collection('notifications');
+
+/**
+ * 알림 문서 생성 (notifications 컬렉션)
+ * - 자기 자신에게는 알림을 보내지 않음
+ */
+async function createNotification(params: {
+  userId: string;       // 알림 받을 사람
+  senderId: string;     // 알림 보낸 사람
+  senderName: string;
+  type: 'like' | 'comment' | 'reply' | 'empathy';
+  targetId: string;     // postId
+  message: string;
+}) {
+  if (params.userId === params.senderId) return; // 자기 자신 제외
+  try {
+    await notificationsRef.add({
+      userId: params.userId,
+      senderId: params.senderId,
+      senderName: params.senderName,
+      type: params.type,
+      targetId: params.targetId,
+      message: params.message,
+      read: false,
+      timestamp: firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.warn('Failed to create notification:', error);
+  }
+}
 
 /**
  * Firestore에서 가져온 Post 배열에 유저별 liked/saved 상태와 상대시간을 부여.
@@ -110,6 +140,12 @@ export async function createPost(post: {
   isAnonymous: boolean;
   images?: string[];
   authorAgeGroup?: string;
+  poll?: {
+    options: string[];
+    votes: Record<string, number>;
+    votedBy: Record<string, number>;
+    totalVotes: number;
+  };
 }) {
   const newPost: Record<string, any> = {
     ...post,
@@ -147,12 +183,16 @@ export async function deletePost(postId: string) {
   await postsRef.doc(postId).delete();
 }
 
-export async function toggleLike(postId: string, userId: string) {
+export async function toggleLike(
+  postId: string,
+  userId: string,
+  senderName?: string,
+) {
   const postRef = postsRef.doc(postId);
 
-  return firestore().runTransaction(async transaction => {
+  const liked = await firestore().runTransaction(async transaction => {
     const doc = await transaction.get(postRef);
-    if (!doc.exists) return;
+    if (!doc.exists) return false;
 
     const data = doc.data()!;
     const likedBy: string[] = data.likedBy || [];
@@ -167,8 +207,22 @@ export async function toggleLike(postId: string, userId: string) {
         : firestore.FieldValue.increment(1),
     });
 
+    // 좋아요 시 알림 생성 (좋아요 취소 시에는 안 보냄)
+    if (!isLiked && data.userId) {
+      createNotification({
+        userId: data.userId,
+        senderId: userId,
+        senderName: senderName || '누군가',
+        type: 'like',
+        targetId: postId,
+        message: `${senderName || '누군가'}님이 게시글을 좋아합니다.`,
+      });
+    }
+
     return !isLiked;
   });
+
+  return liked;
 }
 
 export async function toggleSave(postId: string, userId: string) {
@@ -225,27 +279,33 @@ export async function fetchPostsByAgeGroup(
   };
 }
 
-export async function toggleEmpathy(postId: string, userId: string) {
+export async function votePoll(postId: string, userId: string, optionIndex: number) {
   const postRef = postsRef.doc(postId);
 
   return firestore().runTransaction(async transaction => {
     const doc = await transaction.get(postRef);
-    if (!doc.exists) return;
+    if (!doc.exists) return null;
 
     const data = doc.data()!;
-    const empathizedBy: string[] = data.empathizedBy || [];
-    const isEmpathized = empathizedBy.includes(userId);
+    const poll = data.poll;
+    if (!poll) return null;
+
+    const votedBy: Record<string, number> = poll.votedBy || {};
+    const votes: Record<string, number> = poll.votes || {};
+
+    // 이미 투표한 경우
+    if (votedBy[userId] !== undefined) return null;
+
+    votedBy[userId] = optionIndex;
+    votes[String(optionIndex)] = (votes[String(optionIndex)] || 0) + 1;
 
     transaction.update(postRef, {
-      empathizedBy: isEmpathized
-        ? firestore.FieldValue.arrayRemove(userId)
-        : firestore.FieldValue.arrayUnion(userId),
-      empathyCount: isEmpathized
-        ? firestore.FieldValue.increment(-1)
-        : firestore.FieldValue.increment(1),
+      'poll.votedBy': votedBy,
+      'poll.votes': votes,
+      'poll.totalVotes': (poll.totalVotes || 0) + 1,
     });
 
-    return !isEmpathized;
+    return optionIndex;
   });
 }
 
@@ -289,17 +349,24 @@ export async function addComment(
     userId: string;
     avatar: string;
     text: string;
+    authorAgeGroup?: string;
   },
 ) {
   const batch = firestore().batch();
 
-  const commentRef = commentsRef(postId).doc();
-  batch.set(commentRef, {
+  const data: Record<string, any> = {
     ...comment,
     timestamp: firestore.FieldValue.serverTimestamp(),
     likes: 0,
     likedBy: [],
+  };
+  // Firestore cannot store undefined values
+  Object.keys(data).forEach(key => {
+    if (data[key] === undefined) delete data[key];
   });
+
+  const commentRef = commentsRef(postId).doc();
+  batch.set(commentRef, data);
 
   // Increment comment count on post
   batch.update(postsRef.doc(postId), {
@@ -307,6 +374,25 @@ export async function addComment(
   });
 
   await batch.commit();
+
+  // 게시글 작성자에게 알림
+  try {
+    const postDoc = await postsRef.doc(postId).get();
+    const postData = postDoc.data();
+    if (postData?.userId) {
+      await createNotification({
+        userId: postData.userId,
+        senderId: comment.userId,
+        senderName: comment.user,
+        type: 'comment',
+        targetId: postId,
+        message: `${comment.user}님이 댓글을 남겼습니다: "${comment.text.slice(0, 30)}${comment.text.length > 30 ? '...' : ''}"`,
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to send comment notification:', error);
+  }
+
   return commentRef.id;
 }
 
@@ -318,17 +404,41 @@ export async function addReply(
     userId: string;
     avatar: string;
     text: string;
+    authorAgeGroup?: string;
   },
 ) {
-  await commentsRef(postId).doc(commentId).collection('replies').add({
+  const data: Record<string, any> = {
     ...reply,
     timestamp: firestore.FieldValue.serverTimestamp(),
     likes: 0,
     likedBy: [],
+  };
+  Object.keys(data).forEach(key => {
+    if (data[key] === undefined) delete data[key];
   });
+
+  await commentsRef(postId).doc(commentId).collection('replies').add(data);
 
   // Increment comment count
   await postsRef.doc(postId).update({
     commentCount: firestore.FieldValue.increment(1),
   });
+
+  // 원댓글 작성자에게 알림
+  try {
+    const commentDoc = await commentsRef(postId).doc(commentId).get();
+    const commentData = commentDoc.data();
+    if (commentData?.userId) {
+      await createNotification({
+        userId: commentData.userId,
+        senderId: reply.userId,
+        senderName: reply.user,
+        type: 'reply',
+        targetId: postId,
+        message: `${reply.user}님이 답글을 남겼습니다: "${reply.text.slice(0, 30)}${reply.text.length > 30 ? '...' : ''}"`,
+      });
+    }
+  } catch (error) {
+    console.warn('Failed to send reply notification:', error);
+  }
 }

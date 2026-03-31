@@ -175,13 +175,13 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
       if (!state.uid) return;
       dispatch({type: 'TOGGLE_LIKE', postId});
       try {
-        await postService.toggleLike(postId, state.uid);
+        await postService.toggleLike(postId, state.uid, state.user?.nickname || undefined);
       } catch (error) {
         dispatch({type: 'TOGGLE_LIKE', postId});
         console.error('Failed to toggle like:', error);
       }
     },
-    [state.uid, dispatch],
+    [state.uid, state.user?.nickname, dispatch],
   );
 
   const handleToggleSave = useCallback(
@@ -193,20 +193,6 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
       } catch (error) {
         dispatch({type: 'TOGGLE_SAVE', postId});
         console.error('Failed to toggle save:', error);
-      }
-    },
-    [state.uid, dispatch],
-  );
-
-    const handleToggleEmpathy = useCallback(
-    async (postId: string) => {
-      if (!state.uid) return;
-      dispatch({type: 'TOGGLE_EMPATHY', postId});
-      try {
-        await postService.toggleEmpathy(postId, state.uid);
-      } catch (error) {
-        dispatch({type: 'TOGGLE_EMPATHY', postId});
-        console.error('Failed to toggle empathy:', error);
       }
     },
     [state.uid, dispatch],
@@ -343,7 +329,6 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
               onPress={() => navigation.navigate('PostDetail', {postId: item.id})}
               onLike={() => handleToggleLike(item.id)}
               onSave={() => handleToggleSave(item.id)}
-              onEmpathize={() => handleToggleEmpathy(item.id)}
             />
           )}
           contentContainerStyle={s.feedContent}

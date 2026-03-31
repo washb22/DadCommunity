@@ -27,6 +27,12 @@ export interface Post {
   empathyCount: number;
   empathizedBy?: string[];
   authorAgeGroup?: string;
+  poll?: {
+    options: string[];
+    votes: Record<string, number>;   // {optionIndex: voteCount}
+    votedBy: Record<string, number>; // {userId: optionIndex}
+    totalVotes: number;
+  };
 }
 
 export interface Comment {

@@ -65,7 +65,7 @@ export default function MyPostsScreen({navigation}: MyPostsScreenProps) {
         ),
       );
       try {
-        await postService.toggleLike(postId, state.uid);
+        await postService.toggleLike(postId, state.uid, state.user?.nickname || undefined);
       } catch (error) {
         setPosts(prev =>
           prev.map(p =>

@@ -94,7 +94,6 @@ export default function NotificationScreen({navigation}: NotificationScreenProps
         case 'like':
         case 'comment':
         case 'reply':
-          navigation.navigate('PostDetail', {postId: item.targetId});
           break;
         case 'chat':
           navigation.navigate('ChatDetail', {chatRoomId: item.targetId});

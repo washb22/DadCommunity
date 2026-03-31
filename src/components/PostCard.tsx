@@ -10,10 +10,9 @@ interface PostCardProps {
   onPress: () => void;
   onLike: () => void;
   onSave: () => void;
-  onEmpathize?: () => void;
 }
 
-function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
+function PostCard({post, onPress, onLike, onSave}: PostCardProps) {
   const theme = useTheme();
   const s = makeStyles(theme);
 
@@ -53,6 +52,24 @@ function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
         {post.text}
       </Text>
 
+      {post.poll && post.poll.options.length >= 2 && (
+        <View style={s.pollPreview}>
+          {post.poll.options.map((opt, idx) => {
+            const total = post.poll!.totalVotes || 0;
+            const count = post.poll!.votes?.[String(idx)] || 0;
+            const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+            return (
+              <View key={idx} style={s.pollBar}>
+                <View style={[s.pollFill, {width: `${pct}%`} as any]} />
+                <Text style={s.pollOptionText}>{opt}</Text>
+                <Text style={s.pollPct}>{total > 0 ? `${pct}%` : ''}</Text>
+              </View>
+            );
+          })}
+          <Text style={s.pollTotal}>{post.poll.totalVotes || 0}명 참여</Text>
+        </View>
+      )}
+
       {post.images && post.images.length > 0 && (
         <FlatList
           horizontal
@@ -72,52 +89,34 @@ function PostCard({post, onPress, onLike, onSave, onEmpathize}: PostCardProps) {
 
       <View style={s.actions}>
         <TouchableOpacity
-          style={[
-            s.empathyPill,
-            post.empathized && {backgroundColor: theme.colors.accentLight},
-          ]}
-          onPress={onEmpathize}
-          activeOpacity={0.7}>
+          style={s.actionBtn}
+          onPress={onLike}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
           <Icon
-            name={post.empathized ? 'hand-left' : 'hand-left-outline'}
-            size={16}
-            color={post.empathized ? theme.colors.accent : theme.colors.primary}
+            name={post.liked ? 'heart' : 'heart-outline'}
+            size={18}
+            color={post.liked ? theme.colors.error : theme.colors.textTertiary}
           />
-          <Text style={[s.empathyText, post.empathized && {color: theme.colors.accent}]}>
-            나도 그래요 {post.empathyCount || 0}
+          <Text style={[s.actionText, post.liked && {color: theme.colors.error}]}>
+            {' '}{post.likes}
           </Text>
         </TouchableOpacity>
-        <View style={s.ghostActions}>
-          <TouchableOpacity
-            style={s.actionBtn}
-            onPress={onLike}
-            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Icon
-              name={post.liked ? 'heart' : 'heart-outline'}
-              size={18}
-              color={post.liked ? theme.colors.error : theme.colors.textTertiary}
-            />
-            <Text style={[s.actionText, post.liked && {color: theme.colors.error}]}>
-              {' '}{post.likes}
-            </Text>
-          </TouchableOpacity>
-          <View style={s.actionBtn}>
-            <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
-            <Text style={s.actionText}>
-              {' '}{post.comments.length}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={s.actionBtn}
-            onPress={onSave}
-            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Icon
-              name={post.saved ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={post.saved ? theme.colors.accent : theme.colors.textTertiary}
-            />
-          </TouchableOpacity>
+        <View style={s.actionBtn}>
+          <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
+          <Text style={s.actionText}>
+            {' '}{post.comments.length}
+          </Text>
         </View>
+        <TouchableOpacity
+          style={s.actionBtn}
+          onPress={onSave}
+          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+          <Icon
+            name={post.saved ? 'bookmark' : 'bookmark-outline'}
+            size={18}
+            color={post.saved ? theme.colors.accent : theme.colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -200,6 +199,46 @@ const makeStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginBottom: theme.spacing.md,
     },
+    pollPreview: {
+      marginBottom: theme.spacing.sm,
+      gap: theme.spacing.xs,
+    },
+    pollBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.sm,
+      height: 32,
+      overflow: 'hidden',
+    },
+    pollFill: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: theme.colors.secondary,
+      borderRadius: theme.radius.sm,
+    },
+    pollOptionText: {
+      ...theme.typography.caption,
+      color: theme.colors.textPrimary,
+      fontWeight: '500',
+      paddingHorizontal: theme.spacing.sm,
+      flex: 1,
+      zIndex: 1,
+    },
+    pollPct: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+      paddingRight: theme.spacing.sm,
+      zIndex: 1,
+    },
+    pollTotal: {
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+      marginTop: theme.spacing.xs,
+    },
     imageList: {
       marginBottom: theme.spacing.sm,
     },
@@ -213,27 +252,8 @@ const makeStyles = (theme: Theme) =>
     actions: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingTop: theme.spacing.xs,
-    },
-    empathyPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.colors.secondary,
-      borderRadius: 999,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
-      gap: theme.spacing.xs,
-    },
-    empathyText: {
-      ...theme.typography.overline,
-      fontWeight: '600',
-      color: theme.colors.primary,
-    },
-    ghostActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
       gap: theme.spacing.base,
+      paddingTop: theme.spacing.xs,
     },
     actionBtn: {
       flexDirection: 'row',

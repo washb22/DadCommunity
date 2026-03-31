@@ -114,7 +114,7 @@ export default function SearchScreen({navigation}: SearchScreenProps) {
         ),
       );
       try {
-        await postService.toggleLike(postId, state.uid);
+        await postService.toggleLike(postId, state.uid, state.user?.nickname || undefined);
       } catch (error) {
         setResults(prev =>
           prev.map(p =>
