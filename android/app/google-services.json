@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "868174848530-1l25g03j50s1b3qa100ng9lvtceilfl5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dadcommunity",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "868174848530-tv83ns6ho02ql10nalc1b6jb9ogocoi9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dadcommunity",
+            "certificate_hash": "ae89ec1909243f3a5367753b8828f568ac771ef2"
+          }
+        },
+        {
           "client_id": "868174848530-b890uhuijabs3oaosnb41r4bkotq92os.apps.googleusercontent.com",
           "client_type": 3
         }

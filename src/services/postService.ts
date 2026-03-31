@@ -111,7 +111,7 @@ export async function createPost(post: {
   images?: string[];
   authorAgeGroup?: string;
 }) {
-  const newPost = {
+  const newPost: Record<string, any> = {
     ...post,
     timestamp: firestore.FieldValue.serverTimestamp(),
     likes: 0,
@@ -121,6 +121,13 @@ export async function createPost(post: {
     images: post.images || [],
     createdAt: firestore.FieldValue.serverTimestamp(),
   };
+
+  // ✅ undefined 값 제거 (Firestore는 undefined 저장 불가)
+  Object.keys(newPost).forEach(key => {
+    if (newPost[key] === undefined) {
+      delete newPost[key];
+    }
+  });
 
   const docRef = await postsRef.add(newPost);
   return docRef.id;
@@ -325,4 +332,3 @@ export async function addReply(
     commentCount: firestore.FieldValue.increment(1),
   });
 }
-

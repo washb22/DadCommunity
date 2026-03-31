@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -31,7 +32,6 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
   const insets = useSafeAreaInsets();
   const s = makeStyles(theme);
 
-  // Edit mode
   const editMode = route.params?.editMode || false;
   const editPostId = route.params?.postId;
   const initialCategory = route.params?.initialCategory;
@@ -123,6 +123,7 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
             comments: [],
             saved: false,
             liked: false,
+            images: imageUrls,
             authorAgeGroup: isAnonymous ? undefined : state.user.childAgeGroup,
           },
         });
@@ -294,6 +295,11 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
           <View style={s.imagePreviewRow}>
             {images.map((uri, idx) => (
               <View key={idx} style={s.imagePreview}>
+                <Image
+                  source={{uri}}
+                  style={s.imagePreviewImg}
+                  resizeMode="cover"
+                />
                 <TouchableOpacity
                   style={s.imageRemoveBtn}
                   onPress={() => setImages(prev => prev.filter((_, i) => i !== idx))}>
@@ -487,6 +493,12 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surfaceElevated,
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    imagePreviewImg: {
+      width: 72,
+      height: 72,
+      borderRadius: theme.radius.sm,
     },
     counselGuide: {
       flexDirection: 'row',

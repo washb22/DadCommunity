@@ -107,11 +107,11 @@ export async function uploadPostImages(
   postId: string,
   uris: string[],
 ): Promise<string[]> {
-  const urls: string[] = [];
-  for (const uri of uris) {
-    const url = await uploadImage(uri, `posts/${postId}`);
-    urls.push(url);
-  }
+  // 기존: 한 장씩 순서대로 (느림)
+  // 변경: 동시에 병렬 업로드 (빠름)
+  const urls = await Promise.all(
+    uris.map(uri => uploadImage(uri, `posts/${postId}`)),
+  );
   return urls;
 }
 
