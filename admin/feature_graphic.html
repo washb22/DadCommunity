@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1024px; height: 500px; overflow: hidden; }
+  .container {
+    width: 1024px; height: 500px;
+    background: linear-gradient(160deg, #0f1e38 0%, #1a2d4e 30%, #1e3456 60%, #162844 100%);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+
+  /* Warm lamp glow - bigger, more prominent */
+  .lamp-glow {
+    position: absolute;
+    top: -40px; left: 50%; transform: translateX(-30%);
+    width: 700px; height: 500px;
+    background: radial-gradient(ellipse 350px 280px at 50% 30%, rgba(255, 175, 50, 0.18) 0%, rgba(255, 160, 40, 0.08) 30%, transparent 70%);
+  }
+
+  /* Secondary warm glow bottom */
+  .lamp-glow2 {
+    position: absolute;
+    bottom: -50px; left: 30%;
+    width: 500px; height: 300px;
+    background: radial-gradient(ellipse at 50% 80%, rgba(255, 180, 60, 0.06) 0%, transparent 60%);
+  }
+
+  /* Roof lines */
+  .roof-line {
+    position: absolute; top: 28px; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 90px;
+    border-top: 2px solid rgba(255, 200, 100, 0.1);
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+
+  /* Floor subtle */
+  .container::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+    background: linear-gradient(0deg, rgba(40, 25, 10, 0.2) 0%, transparent 100%);
+  }
+
+  /* Lamp illustration */
+  .lamp {
+    position: absolute;
+    top: 80px; right: 140px;
+    z-index: 1;
+  }
+  .lamp-shade {
+    width: 70px; height: 40px;
+    background: linear-gradient(180deg, #e8a030 0%, #d08820 100%);
+    clip-path: polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 8px 40px rgba(255, 170, 40, 0.4), 0 15px 60px rgba(255, 160, 30, 0.2);
+    position: relative;
+  }
+  .lamp-shade::after {
+    content: '';
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 60px solid transparent;
+    border-right: 60px solid transparent;
+    border-top: 120px solid rgba(255, 180, 50, 0.07);
+  }
+  .lamp-pole {
+    width: 4px; height: 140px;
+    background: linear-gradient(180deg, #c08030, #906020);
+    margin: 0 auto;
+    border-radius: 2px;
+  }
+  .lamp-base {
+    width: 40px; height: 6px;
+    background: #906020;
+    margin: 0 auto;
+    border-radius: 3px;
+  }
+  /* Bulb glow */
+  .lamp-bulb {
+    position: absolute; top: 36px; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 12px;
+    background: #ffe880;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #ffcc40, 0 0 50px rgba(255, 200, 50, 0.5), 0 0 100px rgba(255, 180, 40, 0.3);
+  }
+
+  /* Second small lamp - left side */
+  .lamp-small {
+    position: absolute;
+    bottom: 90px; left: 80px;
+    z-index: 1; opacity: 0.4;
+    transform: scale(0.5);
+  }
+
+  .content {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; gap: 44px;
+    margin-top: 10px;
+  }
+
+  /* App icon */
+  .app-icon {
+    width: 150px; height: 150px; border-radius: 34px;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 50px rgba(255, 180, 60, 0.12);
+    flex-shrink: 0;
+  }
+  .app-icon img { width: 100%; height: 100%; }
+
+  .text-area {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  .app-name {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    font-size: 54px; font-weight: 800;
+    color: #fff;
+    letter-spacing: -1px;
+    text-shadow: 0 2px 20px rgba(255, 180, 60, 0.25);
+  }
+
+  .divider {
+    width: 45px; height: 3px;
+    background: linear-gradient(90deg, #f0a030, #e8c060);
+    border-radius: 2px;
+    opacity: 0.7;
+  }
+
+  .tagline {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    font-size: 20px; font-weight: 400;
+    color: rgba(255, 215, 150, 0.75);
+    letter-spacing: 2px;
+  }
+
+  .keywords {
+    display: flex; gap: 10px; margin-top: 8px;
+  }
+  .keyword {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    padding: 8px 22px; border-radius: 22px;
+    background: rgba(255, 180, 60, 0.1);
+    border: 1.5px solid rgba(255, 200, 100, 0.2);
+    color: rgba(255, 225, 170, 0.75);
+    font-size: 16px; font-weight: 600;
+  }
+
+  /* Floating warm particles */
+  .particle {
+    position: absolute; border-radius: 50%;
+    background: rgba(255, 200, 90, 0.12);
+  }
+  .p1 { width: 5px; height: 5px; top: 140px; left: 120px; }
+  .p2 { width: 3px; height: 3px; top: 220px; left: 240px; }
+  .p3 { width: 6px; height: 6px; top: 100px; left: 420px; }
+  .p4 { width: 4px; height: 4px; bottom: 140px; left: 350px; }
+  .p5 { width: 3px; height: 3px; bottom: 170px; right: 280px; }
+  .p6 { width: 5px; height: 5px; top: 280px; right: 120px; }
+  .p7 { width: 4px; height: 4px; top: 180px; left: 600px; }
+  .p8 { width: 3px; height: 3px; bottom: 120px; right: 450px; }
+  .p9 { width: 4px; height: 4px; top: 100px; left: 700px; }
+  .p10 { width: 5px; height: 5px; bottom: 200px; left: 150px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="lamp-glow"></div>
+  <div class="lamp-glow2"></div>
+  <div class="roof-line"></div>
+
+  <!-- Main lamp -->
+  <div class="lamp">
+    <div class="lamp-shade"></div>
+    <div class="lamp-bulb"></div>
+    <div class="lamp-pole"></div>
+    <div class="lamp-base"></div>
+  </div>
+
+  <!-- Small lamp left -->
+  <div class="lamp-small">
+    <div class="lamp-shade"></div>
+    <div class="lamp-bulb"></div>
+    <div class="lamp-pole"></div>
+    <div class="lamp-base"></div>
+  </div>
+
+  <div class="particle p1"></div>
+  <div class="particle p2"></div>
+  <div class="particle p3"></div>
+  <div class="particle p4"></div>
+  <div class="particle p5"></div>
+  <div class="particle p6"></div>
+  <div class="particle p7"></div>
+  <div class="particle p8"></div>
+  <div class="particle p9"></div>
+  <div class="particle p10"></div>
+
+  <div class="content">
+    <div class="app-icon">
+      <img src="../1024_icon.png" />
+    </div>
+    <div class="text-area">
+      <div class="app-name">아빠의다락방</div>
+      <div class="divider"></div>
+      <div class="tagline">대한민국 아빠들의 솔직한 소통 공간</div>
+      <div class="keywords">
+        <div class="keyword">육아</div>
+        <div class="keyword">소통</div>
+        <div class="keyword">공감</div>
+        <div class="keyword">일상</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

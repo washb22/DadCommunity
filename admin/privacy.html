@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개인정보처리방침 - 아빠의다락방</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, sans-serif;
+      background: #f8f9fa; color: #333; line-height: 1.8;
+    }
+    .header {
+      background: #fff; border-bottom: 1px solid #eee;
+      padding: 24px 0; text-align: center;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+    .header p { font-size: 13px; color: #888; margin-top: 4px; }
+    .container {
+      max-width: 800px; margin: 32px auto; padding: 0 24px;
+    }
+    .content {
+      background: #fff; border-radius: 12px; padding: 40px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      font-size: 15px; white-space: pre-wrap; word-break: keep-all;
+    }
+    .loading { text-align: center; padding: 60px; color: #999; }
+    .footer {
+      text-align: center; padding: 32px; font-size: 12px; color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>개인정보처리방침</h1>
+    <p id="updatedAt"></p>
+  </div>
+  <div class="container">
+    <div class="content" id="privacyContent">
+      <div class="loading">불러오는 중...</div>
+    </div>
+  </div>
+  <div class="footer">아빠의다락방</div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyASX8kUxt0VyfTqoXHJ1ND48EzMuAIVSpM",
+      authDomain: "dadcommunity-ae202.firebaseapp.com",
+      projectId: "dadcommunity-ae202",
+      storageBucket: "dadcommunity-ae202.firebasestorage.app",
+      messagingSenderId: "868174848530",
+      appId: "1:868174848530:web:382e8e5fa822f8846ceecb"
+    });
+
+    const db = firebase.firestore();
+
+    async function load() {
+      try {
+        const doc = await db.collection('settings').doc('privacyPolicy').get();
+        if (doc.exists && doc.data().content) {
+          document.getElementById('privacyContent').innerHTML = doc.data().content.replace(/\n/g, '<br>');
+          if (doc.data().updatedAt) {
+            const d = doc.data().updatedAt.toDate();
+            document.getElementById('updatedAt').textContent = '최종 수정일: ' + d.toLocaleDateString('ko-KR');
+          }
+        } else {
+          document.getElementById('privacyContent').innerHTML = '<div class="loading">등록된 개인정보처리방침이 없습니다.</div>';
+        }
+      } catch(e) {
+        document.getElementById('privacyContent').innerHTML = '<div class="loading">불러오기 실패</div>';
+      }
+    }
+    load();
+  </script>
+</body>
+</html>
