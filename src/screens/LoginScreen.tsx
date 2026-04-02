@@ -13,7 +13,7 @@ import firestore from '@react-native-firebase/firestore';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {signInWithGoogle} from '../services/authService';
+import {signInWithGoogle, signInWithApple} from '../services/authService';
 import type {LoginScreenProps} from '../navigation/types';
 
 export default function LoginScreen({navigation}: LoginScreenProps) {
@@ -68,6 +68,22 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
     }
   };
 
+  const handleAppleLogin = async () => {
+    setLoading(true);
+    try {
+      const user = await signInWithApple();
+      dispatch({type: 'LOGIN', uid: user.uid});
+      await navigateAfterLogin(user.uid);
+    } catch (error: any) {
+      console.error('Apple login failed:', error.message);
+      if (error.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('로그인 실패', 'Apple 로그인에 실패했습니다. 다시 시도해주세요.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[s.container, s.loadingContainer]}>
@@ -93,6 +109,14 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
           s.buttonSection,
           {opacity: fadeAnim, transform: [{translateY: slideAnim}]},
         ]}>
+        <TouchableOpacity
+          style={s.appleBtn}
+          onPress={handleAppleLogin}
+          activeOpacity={0.8}>
+          <Text style={s.appleLogo}>{'\uF8FF'}</Text>
+          <Text style={s.appleBtnText}>Apple로 시작하기</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={s.googleBtn}
           onPress={handleGoogleLogin}
@@ -156,6 +180,26 @@ const makeStyles = (theme: Theme) =>
     buttonSection: {
       paddingBottom: theme.spacing['2xl'],
       gap: theme.spacing.md,
+    },
+    appleBtn: {
+      height: 52,
+      borderRadius: theme.radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      backgroundColor: '#000000',
+      gap: theme.spacing.sm,
+      ...theme.shadows.level2,
+    },
+    appleLogo: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    appleBtnText: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
     googleBtn: {
       height: 52,

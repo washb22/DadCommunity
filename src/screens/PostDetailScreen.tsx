@@ -25,6 +25,7 @@ import * as followService from '../services/followService';
 import {getRelativeTime} from '../data/mockData';
 import {Comment, Post} from '../data/mockData';
 import * as reportService from '../services/reportService';
+import {checkContent} from '../services/contentFilter';
 import type {PostDetailScreenProps} from '../navigation/types';
 
 export default function PostDetailScreen({route, navigation}: PostDetailScreenProps) {
@@ -190,6 +191,15 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
     if (!comment.trim() || submitting) return;
     if (!state.uid) {
       Alert.alert('알림', '로그인이 필요합니다.');
+      return;
+    }
+
+    const filterResult = checkContent(comment);
+    if (!filterResult.isClean) {
+      Alert.alert(
+        '부적절한 내용 감지',
+        '댓글에 부적절한 표현이 포함되어 있습니다. 수정 후 다시 시도해주세요.',
+      );
       return;
     }
 

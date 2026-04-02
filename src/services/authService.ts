@@ -1,6 +1,8 @@
+import {Platform} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import {appleAuth} from '@invertase/react-native-apple-authentication';
 import {UserProfile} from '../data/mockData';
 
 // Google Sign-In 설정 - Firebase Console에서 webClientId를 가져와 설정하세요
@@ -19,6 +21,31 @@ export async function signInWithGoogle() {
   return userCredential.user;
 }
 
+export async function signInWithApple() {
+  const appleAuthRequestResponse = await appleAuth.performRequest({
+    requestedOperation: appleAuth.Operation.LOGIN,
+    requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
+  });
+
+  if (!appleAuthRequestResponse.identityToken) {
+    throw new Error('Apple Sign-In failed - no identity token');
+  }
+
+  const {identityToken, nonce} = appleAuthRequestResponse;
+  const credential = auth.AppleAuthProvider.credential(identityToken, nonce);
+  const userCredential = await auth().signInWithCredential(credential);
+
+  // Apple only provides name on first login, so save it
+  const displayName = appleAuthRequestResponse.fullName
+    ? [appleAuthRequestResponse.fullName.givenName, appleAuthRequestResponse.fullName.familyName]
+        .filter(Boolean)
+        .join(' ')
+    : undefined;
+
+  await ensureUserProfile(userCredential.user, displayName);
+  return userCredential.user;
+}
+
 export async function signOut() {
   try {
     await GoogleSignin.signOut();
@@ -26,7 +53,7 @@ export async function signOut() {
   await auth().signOut();
 }
 
-async function ensureUserProfile(user: any) {
+async function ensureUserProfile(user: any, displayName?: string) {
   const userDoc = await usersRef.doc(user.uid).get();
   if (!userDoc.exists) {
     const defaultProfile: Omit<UserProfile, 'nickname'> & {
@@ -37,7 +64,7 @@ async function ensureUserProfile(user: any) {
     } = {
       uid: user.uid,
       email: user.email || '',
-      nickname: user.displayName || `아빠${Math.floor(Math.random() * 10000)}`,
+      nickname: displayName || user.displayName || `아빠${Math.floor(Math.random() * 10000)}`,
       avatar: '🧔',
       bio: '',
       postCount: 0,

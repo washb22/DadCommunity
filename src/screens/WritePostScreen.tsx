@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import {useApp} from '../context/AppContext';
 import {useTheme, Theme} from '../theme';
 import * as postService from '../services/postService';
+import {checkContent} from '../services/contentFilter';
 import type {WritePostScreenProps} from '../navigation/types';
 
 const BOARD_OPTIONS = [
@@ -66,6 +67,17 @@ export default function WritePostScreen({navigation, route}: WritePostScreenProp
     }
     if (!state.uid) {
       Alert.alert('알림', '로그인이 필요합니다.');
+      return;
+    }
+
+    const titleCheck = checkContent(title);
+    const contentCheck = checkContent(content);
+    if (!titleCheck.isClean || !contentCheck.isClean) {
+      const flagged = [...titleCheck.flaggedWords, ...contentCheck.flaggedWords];
+      Alert.alert(
+        '부적절한 내용 감지',
+        '게시글에 부적절한 표현이 포함되어 있습니다. 수정 후 다시 시도해주세요.',
+      );
       return;
     }
 

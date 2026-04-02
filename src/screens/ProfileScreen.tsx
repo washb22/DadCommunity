@@ -20,6 +20,7 @@ import Header from '../components/Header';
 import AgeBadge from '../components/AgeBadge';
 import InterestChips from '../components/InterestChip';
 import {signOut, deleteAccount} from '../services/authService';
+import {Linking} from 'react-native';
 import type {ProfileScreenProps} from '../navigation/types';
 
 const MENU_SECTIONS = [
@@ -253,6 +254,16 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
           </TouchableOpacity>
         </View>
 
+        {/* Contact Info for Reporting */}
+        <View style={s.contactInfoSection}>
+          <Icon name="mail-outline" size={16} color={theme.colors.textTertiary} />
+          <Text style={s.contactInfoText}>
+            부적절한 활동 신고: </Text>
+          <TouchableOpacity onPress={() => Linking.openURL('mailto:sbro@sbrother.co.kr')}>
+            <Text style={s.contactInfoLink}>sbro@sbrother.co.kr</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Logout */}
         <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
           <Text style={s.logoutText}>로그아웃</Text>
@@ -441,6 +452,24 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.captionSmall,
       color: theme.colors.textTertiary,
       marginTop: theme.spacing.xs,
+    },
+    contactInfoSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.base,
+      gap: theme.spacing.xs,
+    },
+    contactInfoText: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+    },
+    contactInfoLink: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
     },
     logoutBtn: {
       marginHorizontal: theme.spacing.md,

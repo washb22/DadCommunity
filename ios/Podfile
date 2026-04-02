@@ -58,5 +58,17 @@ target 'DadCommunity' do
         end
       end
     end
+
+    # Ensure React prebuilt framework is linked for pods using Fabric (Sealable symbol)
+    installer.pods_project.targets.each do |target|
+      if ['RNGestureHandler', 'RNGoogleSignin', 'RNScreens', 'ReactCodegen'].include?(target.name)
+        target.build_configurations.each do |bc|
+          ldflags = bc.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
+          ldflags = [ldflags] unless ldflags.is_a?(Array)
+          ldflags << '-framework "React"' unless ldflags.any? { |f| f.include?('React') }
+          bc.build_settings['OTHER_LDFLAGS'] = ldflags
+        end
+      end
+    end
   end
 end

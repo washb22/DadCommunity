@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import firestore from '@react-native-firebase/firestore';
@@ -55,7 +56,10 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
+  const TOTAL_STEPS = 4;
   const [step, setStep] = useState(1);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [nickname, setNickname] = useState(state.user.nickname || '');
   const [avatar, setAvatar] = useState(state.user.avatar || '🧔');
   const [childInfo, setChildInfo] = useState<ChildInfo>({
@@ -76,12 +80,18 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
 
   const handleNext = () => {
     if (step === 1) {
-      if (!nickname.trim()) {
-        Alert.alert('알림', '닉네임을 입력해주세요.');
+      if (!agreeTerms || !agreePrivacy) {
+        Alert.alert('알림', '이용약관과 개인정보처리방침에 모두 동의해주세요.');
         return;
       }
       setStep(2);
     } else if (step === 2) {
+      if (!nickname.trim()) {
+        Alert.alert('알림', '닉네임을 입력해주세요.');
+        return;
+      }
+      setStep(3);
+    } else if (step === 3) {
       if (!childInfo.ageGroup) {
         Alert.alert('알림', '자녀 나이대를 선택해주세요.');
         return;
@@ -90,7 +100,7 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
         Alert.alert('알림', '자녀 성별을 선택해주세요.');
         return;
       }
-      setStep(3);
+      setStep(4);
     }
   };
 
@@ -123,6 +133,8 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
           },
           interests: selectedInterests,
           onboardingCompleted: true,
+          termsAgreedAt: firestore.FieldValue.serverTimestamp(),
+          privacyAgreedAt: firestore.FieldValue.serverTimestamp(),
         },
         {merge: true},
       );
@@ -150,13 +162,87 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
 
   const renderStepIndicator = () => (
     <View style={s.stepIndicator}>
-      {[1, 2, 3].map(i => (
+      {[1, 2, 3, 4].map(i => (
         <View
           key={i}
           style={[s.stepDot, i === step && s.stepDotActive, i < step && s.stepDotDone]}
         />
       ))}
     </View>
+  );
+
+  const renderStep1Terms = () => (
+    <ScrollView contentContainerStyle={s.stepContent} showsVerticalScrollIndicator={false}>
+      <Text style={s.stepTitle}>약관 동의</Text>
+      <Text style={s.stepSubtitle}>서비스 이용을 위해 아래 약관에 동의해주세요</Text>
+
+      <View style={s.termsNotice}>
+        <Icon name="shield-checkmark-outline" size={20} color={theme.colors.primary} />
+        <Text style={s.termsNoticeText}>
+          아빠의 다락방은 건전한 커뮤니티 운영을 위해 불쾌한 콘텐츠 및 악용 행위에 대한 무관용 정책을 시행합니다.
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={s.termsItem}
+        onPress={() => setAgreeTerms(!agreeTerms)}
+        activeOpacity={0.7}>
+        <Icon
+          name={agreeTerms ? 'checkbox' : 'square-outline'}
+          size={24}
+          color={agreeTerms ? theme.colors.primary : theme.colors.textTertiary}
+        />
+        <Text style={s.termsItemText}>[필수] 이용약관 동의</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Terms')}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Text style={s.termsViewLink}>보기</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={s.termsItem}
+        onPress={() => setAgreePrivacy(!agreePrivacy)}
+        activeOpacity={0.7}>
+        <Icon
+          name={agreePrivacy ? 'checkbox' : 'square-outline'}
+          size={24}
+          color={agreePrivacy ? theme.colors.primary : theme.colors.textTertiary}
+        />
+        <Text style={s.termsItemText}>[필수] 개인정보처리방침 동의</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('PrivacyPolicy')}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Text style={s.termsViewLink}>보기</Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={s.agreeAllBtn}
+        onPress={() => {
+          const allAgreed = agreeTerms && agreePrivacy;
+          setAgreeTerms(!allAgreed);
+          setAgreePrivacy(!allAgreed);
+        }}
+        activeOpacity={0.7}>
+        <Icon
+          name={agreeTerms && agreePrivacy ? 'checkbox' : 'square-outline'}
+          size={24}
+          color={agreeTerms && agreePrivacy ? theme.colors.primary : theme.colors.textTertiary}
+        />
+        <Text style={s.agreeAllText}>전체 동의</Text>
+      </TouchableOpacity>
+
+      <View style={s.termsSummary}>
+        <Text style={s.termsSummaryTitle}>주요 안내사항</Text>
+        <Text style={s.termsSummaryText}>
+          {'\u2022'} 불쾌한 콘텐츠(음란물, 폭력, 혐오 발언 등) 게시 시 계정이 즉시 정지됩니다.{'\n'}
+          {'\u2022'} 신고된 콘텐츠는 24시간 이내에 검토 및 조치됩니다.{'\n'}
+          {'\u2022'} 부적절한 활동 신고: sbro@sbrother.co.kr{'\n'}
+          {'\u2022'} 만 18세 이상 이용 가능한 서비스입니다.
+        </Text>
+      </View>
+    </ScrollView>
   );
 
   const renderStep1 = () => (
@@ -324,22 +410,26 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
         ) : (
           <View style={s.placeholder} />
         )}
-        <Text style={s.headerTitle}>Step {step}/3</Text>
+        <Text style={s.headerTitle}>Step {step}/{TOTAL_STEPS}</Text>
         <View style={s.placeholder} />
       </View>
 
       {renderStepIndicator()}
 
       {/* Step Content */}
-      {step === 1 && renderStep1()}
-      {step === 2 && renderStep2()}
-      {step === 3 && renderStep3()}
+      {step === 1 && renderStep1Terms()}
+      {step === 2 && renderStep1()}
+      {step === 3 && renderStep2()}
+      {step === 4 && renderStep3()}
 
       {/* Bottom Button */}
       <View style={s.bottomBar}>
-        {step < 3 ? (
-          <TouchableOpacity style={s.nextButton} onPress={handleNext} activeOpacity={0.8}>
-            <Text style={s.nextButtonText}>다음</Text>
+        {step < TOTAL_STEPS ? (
+          <TouchableOpacity
+            style={[s.nextButton, step === 1 && (!agreeTerms || !agreePrivacy) && s.nextButtonDisabled]}
+            onPress={handleNext}
+            activeOpacity={0.8}>
+            <Text style={s.nextButtonText}>{step === 1 ? '동의하고 계속하기' : '다음'}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -552,6 +642,69 @@ const makeStyles = (theme: Theme) =>
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
       borderTopColor: theme.colors.border,
+    },
+    termsNotice: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: theme.colors.secondary,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.xl,
+    },
+    termsNoticeText: {
+      flex: 1,
+      ...theme.typography.bodySmall,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      lineHeight: 20,
+    },
+    termsItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+      gap: theme.spacing.sm,
+    },
+    termsItemText: {
+      flex: 1,
+      ...theme.typography.body,
+      color: theme.colors.textPrimary,
+    },
+    termsViewLink: {
+      ...theme.typography.bodySmall,
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    agreeAllBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: theme.spacing.base,
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.sm,
+    },
+    agreeAllText: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+    },
+    termsSummary: {
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      marginTop: theme.spacing.lg,
+    },
+    termsSummaryTitle: {
+      ...theme.typography.caption,
+      fontWeight: '700',
+      color: theme.colors.textSecondary,
+      marginBottom: theme.spacing.sm,
+    },
+    termsSummaryText: {
+      ...theme.typography.caption,
+      color: theme.colors.textSecondary,
+      lineHeight: 20,
     },
     nextButton: {
       height: 52,
