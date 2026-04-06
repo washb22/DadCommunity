@@ -61,8 +61,13 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
       dispatch({type: 'LOGIN', uid: user.uid});
       await navigateAfterLogin(user.uid);
     } catch (error: any) {
-      console.error('Google login failed:', error.message);
-      Alert.alert('로그인 실패', '구글 로그인에 실패했습니다. 다시 시도해주세요.');
+      console.error('Google login failed:', error.code, error.message);
+      if (
+        error.code !== 'SIGN_IN_CANCELLED' &&
+        error.code !== 'ERR_REQUEST_CANCELED'
+      ) {
+        Alert.alert('로그인 실패', '구글 로그인에 실패했습니다. 다시 시도해주세요.');
+      }
     } finally {
       setLoading(false);
     }

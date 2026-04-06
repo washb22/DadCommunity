@@ -59,6 +59,8 @@
 	<false/>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>GIDClientID</key>
+	<string>868174848530-ll8k4prm32p52s0fh6fkvkfcdvesb6ut.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -5,17 +5,28 @@ import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import {appleAuth} from '@invertase/react-native-apple-authentication';
 import {UserProfile} from '../data/mockData';
 
-// Google Sign-In 설정 - Firebase Console에서 webClientId를 가져와 설정하세요
+// Google Sign-In 설정
 GoogleSignin.configure({
-  webClientId: '868174848530-b890uhuijabs3oaosnb41r4bkotq92os.apps.googleusercontent.com',
+  webClientId:
+    '868174848530-b890uhuijabs3oaosnb41r4bkotq92os.apps.googleusercontent.com',
+  iosClientId:
+    '868174848530-ll8k4prm32p52s0fh6fkvkfcdvesb6ut.apps.googleusercontent.com',
+  offlineAccess: false,
 });
 
 const usersRef = firestore().collection('users');
 
 export async function signInWithGoogle() {
-  const {data} = await GoogleSignin.signIn();
-  if (!data?.idToken) throw new Error('Google Sign-In failed');
-  const credential = auth.GoogleAuthProvider.credential(data.idToken);
+  await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+  const response = await GoogleSignin.signIn();
+  if (response.type === 'cancelled') {
+    const cancelError = new Error('Google Sign-In cancelled');
+    (cancelError as any).code = 'SIGN_IN_CANCELLED';
+    throw cancelError;
+  }
+  const idToken = response.data?.idToken;
+  if (!idToken) throw new Error('Google Sign-In failed - no idToken');
+  const credential = auth.GoogleAuthProvider.credential(idToken);
   const userCredential = await auth().signInWithCredential(credential);
   await ensureUserProfile(userCredential.user);
   return userCredential.user;
