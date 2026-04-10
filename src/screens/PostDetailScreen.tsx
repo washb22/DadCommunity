@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,14 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
   Share,
   Image,
   Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -42,6 +43,21 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
   const [followLoading, setFollowLoading] = useState(false);
   const [fetchedPost, setFetchedPost] = useState<Post | null>(null);
   const [loadingPost, setLoadingPost] = useState(false);
+
+  const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setTimeout(() => flatListRef.current?.scrollToEnd({animated: true}), 150);
+      },
+    );
+    return () => {
+      showSub.remove();
+    };
+  }, []);
 
   const statePost = state.posts.find(p => p.id === postId);
   const post = statePost || fetchedPost;
@@ -379,9 +395,12 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
 
       <KeyboardAvoidingView
         style={s.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <FlatList
+          ref={flatListRef}
           data={post.comments}
+          keyboardShouldPersistTaps="handled"
           keyExtractor={item => item.id}
           ListHeaderComponent={() => (
             <View style={s.postSection}>
@@ -618,6 +637,7 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
         {/* Comment Input */}
         <View style={s.commentInput}>
           <TextInput
+            ref={inputRef}
             style={s.input}
             placeholder={
               replyTo
