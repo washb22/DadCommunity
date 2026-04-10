@@ -520,8 +520,8 @@
       <!-- Filters -->
       <div class="card" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <select id="contactFilterStatus" onchange="loadContacts()" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
-          <option value="all">전체 상태</option>
-          <option value="pending" selected>대기 중</option>
+          <option value="all" selected>전체 상태</option>
+          <option value="pending">대기 중</option>
           <option value="answered">답변 완료</option>
         </select>
         <select id="contactFilterCategory" onchange="loadContacts()" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
@@ -1252,8 +1252,9 @@ async function loadContacts() {
   try {
   const status = document.getElementById('contactFilterStatus').value;
   const category = document.getElementById('contactFilterCategory').value;
-  let query = db.collection('contacts').orderBy('createdAt','desc');
+  let query = db.collection('contacts');
   if (status !== 'all') query = query.where('status','==',status);
+  query = query.orderBy('createdAt','desc');
   const snap = await query.limit(100).get();
   let contacts = snap.docs.map(d => ({id:d.id,...d.data()}));
   if (category !== 'all') contacts = contacts.filter(c => c.category === category);
@@ -1364,11 +1365,17 @@ async function loadPrivacyPolicy() {
     if (doc.exists) {
       document.getElementById('privacyContent').value = doc.data().content || '';
       if (doc.data().updatedAt) {
-        const d = doc.data().updatedAt.toDate();
+        const d = doc.data().updatedAt.toDate ? doc.data().updatedAt.toDate() : new Date(doc.data().updatedAt);
         document.getElementById('privacyLastUpdated').textContent = '최종 수정: ' + d.toLocaleString('ko-KR');
       }
+    } else {
+      document.getElementById('privacyContent').value = '';
+      document.getElementById('privacyLastUpdated').textContent = '아직 작성된 내용이 없습니다. 아래에 입력 후 저장하세요.';
     }
-  } catch(e) { console.error('개인정보처리방침 로드 실패:', e); }
+  } catch(e) {
+    console.error('개인정보처리방침 로드 실패:', e);
+    document.getElementById('privacyLastUpdated').textContent = '로드 실패: ' + e.message;
+  }
 }
 
 async function savePrivacyPolicy() {
