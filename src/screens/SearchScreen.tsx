@@ -85,10 +85,14 @@ export default function SearchScreen({navigation}: SearchScreenProps) {
 
         const lowerQ = q.toLowerCase();
         const filtered = allPosts.filter(
-          (p: Partial<Post>) =>
-            (p.title && p.title.toLowerCase().includes(lowerQ)) ||
-            (p.text && p.text.toLowerCase().includes(lowerQ)) ||
-            (p.category && p.category.toLowerCase().includes(lowerQ)),
+          (p: Partial<Post>) => {
+            if (p.userId && state.blockedUsers.includes(p.userId)) return false;
+            return (
+              (p.title && p.title.toLowerCase().includes(lowerQ)) ||
+              (p.text && p.text.toLowerCase().includes(lowerQ)) ||
+              (p.category && p.category.toLowerCase().includes(lowerQ))
+            );
+          },
         );
 
         setResults(

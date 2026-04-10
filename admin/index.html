@@ -65,8 +65,8 @@
     .btn-logout:hover { background: #2a2a4a; color: #fff; }
 
     .main { margin-left: 240px; padding: 32px; }
-    .page { display: none; }
-    .page.active { display: block; }
+    .page { display: none !important; }
+    .page.active { display: block !important; }
     .page-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
 
     /* Stats Cards */
@@ -514,7 +514,7 @@
     </div>
 
     <!-- ==================== CONTACTS ==================== -->
-    <div class="page" id="page-contacts" style="display:none">
+    <div class="page" id="page-contacts">
       <h1 class="page-title">문의 관리</h1>
 
       <!-- Filters -->
@@ -538,7 +538,7 @@
       <div id="contactList"></div>
 
       <!-- Contact Detail Modal -->
-      <div id="contactModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;">
+      <div id="contactModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
         <div style="background:#fff;border-radius:16px;padding:32px;width:640px;max-height:85vh;overflow-y:auto;position:relative;">
           <button onclick="closeContactModal()" style="position:absolute;top:16px;right:16px;border:none;background:none;font-size:24px;cursor:pointer;color:#999;">✕</button>
           <div id="contactModalBody"></div>
@@ -547,7 +547,7 @@
     </div>
 
     <!-- ==================== PRIVACY POLICY ==================== -->
-    <div class="page" id="page-privacy" style="display:none">
+    <div class="page" id="page-privacy">
       <h1 class="page-title">개인정보처리방침</h1>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
@@ -636,7 +636,7 @@ document.querySelectorAll('.sidebar-menu li').forEach(li => {
     const loaders = {
       dashboard: loadDashboard, stats: loadStats, users: loadUsers, posts: loadPosts,
       comments: loadComments, reports: loadReports, push: loadPushPosts,
-      banners: loadBanners, categories: loadCategories, appversion: loadAppVersion, privacy: loadPrivacyPolicy
+      banners: loadBanners, categories: loadCategories, appversion: loadAppVersion, contacts: loadContacts, privacy: loadPrivacyPolicy
     };
     if (loaders[page]) loaders[page]();
   });
@@ -1249,6 +1249,7 @@ const CONTACT_STATUS_LABEL = {pending:'대기 중',answered:'답변 완료'};
 const CONTACT_STATUS_COLOR = {pending:'#e67e22',answered:'#27ae60'};
 
 async function loadContacts() {
+  try {
   const status = document.getElementById('contactFilterStatus').value;
   const category = document.getElementById('contactFilterCategory').value;
   let query = db.collection('contacts').orderBy('createdAt','desc');
@@ -1289,6 +1290,7 @@ async function loadContacts() {
       <div style="color:#ccc;font-size:20px;">›</div>
     </div>`;
   }).join('');
+  } catch(e) { console.error('loadContacts error:', e); document.getElementById('contactList').innerHTML = '<div class="card" style="text-align:center;color:#e74c3c;padding:48px;">문의 로딩 실패: ' + e.message + '</div>'; }
 }
 
 async function openContactDetail(contactId) {
@@ -1382,14 +1384,6 @@ async function savePrivacyPolicy() {
     setTimeout(() => { status.style.display = 'none'; }, 3000);
   } catch(e) { alert('저장 실패: ' + e.message); }
 }
-
-// Load contacts when page is shown
-const origSidebarClick = document.querySelectorAll('.sidebar-menu li');
-origSidebarClick.forEach(li => {
-  li.addEventListener('click', () => {
-    if (li.dataset.page === 'contacts') loadContacts();
-  });
-});
 
 // Initial badge load
 setTimeout(async () => {

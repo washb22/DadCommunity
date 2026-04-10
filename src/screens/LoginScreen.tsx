@@ -130,6 +130,13 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
           <Text style={s.googleBtnText}>Google로 시작하기</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={s.browseBtn}
+          onPress={() => navigation.replace('Main')}
+          activeOpacity={0.8}>
+          <Text style={s.browseBtnText}>둘러보기</Text>
+        </TouchableOpacity>
+
         <Text style={s.footerText}>
           3초만에 가입하고 아빠들의 이야기에 참여하세요
         </Text>
@@ -225,6 +232,20 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.body,
       fontWeight: '700',
       color: theme.colors.textPrimary,
+    },
+    browseBtn: {
+      height: 52,
+      borderRadius: theme.radius.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+    },
+    browseBtnText: {
+      ...theme.typography.body,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
     },
     footerText: {
       textAlign: 'center',

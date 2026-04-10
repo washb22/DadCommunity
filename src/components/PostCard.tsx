@@ -107,6 +107,12 @@ function PostCard({post, onPress, onLike, onSave}: PostCardProps) {
             {' '}{post.comments.length}
           </Text>
         </View>
+        <View style={s.actionBtn}>
+          <Icon name="eye-outline" size={18} color={theme.colors.textTertiary} />
+          <Text style={s.actionText}>
+            {' '}{post.viewCount || 0}
+          </Text>
+        </View>
         <TouchableOpacity
           style={s.actionBtn}
           onPress={onSave}

@@ -124,6 +124,12 @@ export async function fetchPosts(
   };
 }
 
+export async function incrementViewCount(postId: string) {
+  await postsRef.doc(postId).update({
+    viewCount: firestore.FieldValue.increment(1),
+  });
+}
+
 export async function fetchPostById(postId: string): Promise<Post | null> {
   const doc = await postsRef.doc(postId).get();
   if (!doc.exists) return null;

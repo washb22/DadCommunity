@@ -22,6 +22,7 @@ export interface Post {
   commentCount?: number;
   images?: string[];
   tags?: string[];
+  viewCount?: number;
   shareCount?: number;
   empathized: boolean;
   empathyCount: number;

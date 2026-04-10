@@ -176,7 +176,7 @@ export default function BoardDetailScreen({route, navigation}: BoardDetailScreen
         showBack
         onBack={() => navigation.goBack()}
       />
-      {posts.length === 0 ? (
+      {posts.filter(p => !(p.userId && state.blockedUsers.includes(p.userId))).length === 0 ? (
         <EmptyState
           icon="clipboard-outline"
           title="아직 게시글이 없습니다"
@@ -184,7 +184,7 @@ export default function BoardDetailScreen({route, navigation}: BoardDetailScreen
         />
       ) : (
         <FlatList
-          data={posts}
+          data={posts.filter(p => !(p.userId && state.blockedUsers.includes(p.userId)))}
           keyExtractor={item => item.id}
           renderItem={({item}) => (
             <PostCard

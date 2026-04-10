@@ -108,7 +108,7 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   }, [activeTab, activeCategory, dispatch, state.uid, enrichPosts]);
 
   const filteredPosts = state.posts.filter(p => {
-    if (state.blockedUsers.includes(p.user)) return false;
+    if (p.userId && state.blockedUsers.includes(p.userId)) return false;
     if (activeTab === '팔로잉') {
       const authorId = p.userId;
       if (!authorId || !followingIds.includes(authorId)) return false;

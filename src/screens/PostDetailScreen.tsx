@@ -94,6 +94,13 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
     }
   }, [statePost, fetchedPost, loadingPost, postId, state.uid]);
 
+  // Increment view count on mount
+  useEffect(() => {
+    if (state.uid) {
+      postService.incrementViewCount(postId).catch(() => {});
+    }
+  }, [postId, state.uid]);
+
   // Check follow status on mount
   useEffect(() => {
     if (!state.uid || !post) return;
@@ -557,58 +564,64 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
               </View>
             </View>
           )}
-          renderItem={({item}) => (
-            <View>
-              <View style={s.commentItem}>
-                <View style={s.commentAvatar}>
-                  <Text style={s.commentAvatarText}>{item.avatar}</Text>
-                </View>
-                <View style={s.commentContent}>
-                  <View style={s.commentHeader}>
-                    <Text style={s.commentUser}>{item.user}</Text>
-                    <Text style={s.commentTime}>{item.time}</Text>
-                  </View>
-                  <Text style={s.commentText}>{item.text}</Text>
-                  <View style={s.commentActions}>
-                    <TouchableOpacity
-                      onPress={() =>
-                        dispatch({
-                          type: 'TOGGLE_COMMENT_LIKE',
-                          postId,
-                          commentId: item.id,
-                        })
-                      }>
-                      <View style={s.actionRow}>
-                        <Icon name={item.liked ? 'heart' : 'heart-outline'} size={14} color={item.liked ? theme.colors.error : theme.colors.textSecondary} />
-                        <Text style={[s.commentAction, item.liked && s.commentActionActive]}>{item.likes}</Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() =>
-                        setReplyTo({commentId: item.id, userName: item.user})
-                      }>
-                      <Text style={s.commentAction}>답글</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-              {/* Replies */}
-              {item.replies.map(reply => (
-                <View key={reply.id} style={s.replyItem}>
-                  <View style={s.replyAvatar}>
-                    <Text style={s.replyAvatarText}>{reply.avatar}</Text>
+          renderItem={({item}) => {
+            if (item.userId && state.blockedUsers.includes(item.userId)) return null;
+            const filteredReplies = item.replies.filter(
+              r => !(r.userId && state.blockedUsers.includes(r.userId)),
+            );
+            return (
+              <View>
+                <View style={s.commentItem}>
+                  <View style={s.commentAvatar}>
+                    <Text style={s.commentAvatarText}>{item.avatar}</Text>
                   </View>
                   <View style={s.commentContent}>
                     <View style={s.commentHeader}>
-                      <Text style={s.commentUser}>{reply.user}</Text>
-                      <Text style={s.commentTime}>{reply.time}</Text>
+                      <Text style={s.commentUser}>{item.user}</Text>
+                      <Text style={s.commentTime}>{item.time}</Text>
                     </View>
-                    <Text style={s.commentText}>{reply.text}</Text>
+                    <Text style={s.commentText}>{item.text}</Text>
+                    <View style={s.commentActions}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          dispatch({
+                            type: 'TOGGLE_COMMENT_LIKE',
+                            postId,
+                            commentId: item.id,
+                          })
+                        }>
+                        <View style={s.actionRow}>
+                          <Icon name={item.liked ? 'heart' : 'heart-outline'} size={14} color={item.liked ? theme.colors.error : theme.colors.textSecondary} />
+                          <Text style={[s.commentAction, item.liked && s.commentActionActive]}>{item.likes}</Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() =>
+                          setReplyTo({commentId: item.id, userName: item.user})
+                        }>
+                        <Text style={s.commentAction}>답글</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              ))}
-            </View>
-          )}
+                {/* Replies */}
+                {filteredReplies.map(reply => (
+                  <View key={reply.id} style={s.replyItem}>
+                    <View style={s.replyAvatar}>
+                      <Text style={s.replyAvatarText}>{reply.avatar}</Text>
+                    </View>
+                    <View style={s.commentContent}>
+                      <View style={s.commentHeader}>
+                        <Text style={s.commentUser}>{reply.user}</Text>
+                        <Text style={s.commentTime}>{reply.time}</Text>
+                      </View>
+                      <Text style={s.commentText}>{reply.text}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
+          }}
           ListEmptyComponent={
             loadingComments ? null : (
               <View style={s.emptyComments}>
