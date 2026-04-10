@@ -47,6 +47,7 @@ export interface Comment {
   liked: boolean;
   likedBy: string[];
   userId: string;
+  isAnonymous?: boolean;
   replies: Reply[];
 }
 
@@ -61,6 +62,7 @@ export interface Reply {
   liked: boolean;
   likedBy: string[];
   userId: string;
+  isAnonymous?: boolean;
 }
 
 export interface ChatRoom {

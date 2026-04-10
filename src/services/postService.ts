@@ -355,13 +355,20 @@ export async function addComment(
     userId: string;
     avatar: string;
     text: string;
+    isAnonymous?: boolean;
     authorAgeGroup?: string;
   },
 ) {
   const batch = firestore().batch();
 
+  const displayName = comment.isAnonymous ? '익명의 아빠' : comment.user;
+  const displayAvatar = comment.isAnonymous ? '🧔' : comment.avatar;
+
   const data: Record<string, any> = {
     ...comment,
+    user: displayName,
+    avatar: displayAvatar,
+    isAnonymous: comment.isAnonymous || false,
     timestamp: firestore.FieldValue.serverTimestamp(),
     likes: 0,
     likedBy: [],
@@ -389,10 +396,10 @@ export async function addComment(
       await createNotification({
         userId: postData.userId,
         senderId: comment.userId,
-        senderName: comment.user,
+        senderName: displayName,
         type: 'comment',
         targetId: postId,
-        message: `${comment.user}님이 댓글을 남겼습니다: "${comment.text.slice(0, 30)}${comment.text.length > 30 ? '...' : ''}"`,
+        message: `${displayName}님이 댓글을 남겼습니다: "${comment.text.slice(0, 30)}${comment.text.length > 30 ? '...' : ''}"`,
       });
     }
   } catch (error) {
@@ -410,11 +417,18 @@ export async function addReply(
     userId: string;
     avatar: string;
     text: string;
+    isAnonymous?: boolean;
     authorAgeGroup?: string;
   },
 ) {
+  const displayName = reply.isAnonymous ? '익명의 아빠' : reply.user;
+  const displayAvatar = reply.isAnonymous ? '🧔' : reply.avatar;
+
   const data: Record<string, any> = {
     ...reply,
+    user: displayName,
+    avatar: displayAvatar,
+    isAnonymous: reply.isAnonymous || false,
     timestamp: firestore.FieldValue.serverTimestamp(),
     likes: 0,
     likedBy: [],
@@ -438,10 +452,10 @@ export async function addReply(
       await createNotification({
         userId: commentData.userId,
         senderId: reply.userId,
-        senderName: reply.user,
+        senderName: displayName,
         type: 'reply',
         targetId: postId,
-        message: `${reply.user}님이 답글을 남겼습니다: "${reply.text.slice(0, 30)}${reply.text.length > 30 ? '...' : ''}"`,
+        message: `${displayName}님이 답글을 남겼습니다: "${reply.text.slice(0, 30)}${reply.text.length > 30 ? '...' : ''}"`,
       });
     }
   } catch (error) {

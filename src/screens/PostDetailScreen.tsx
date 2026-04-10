@@ -38,6 +38,7 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
   const [replyTo, setReplyTo] = useState<{commentId: string; userName: string} | null>(null);
   const [loadingComments, setLoadingComments] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isAnonymousComment, setIsAnonymousComment] = useState(false);
 
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -228,20 +229,25 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
 
     setSubmitting(true);
     try {
+      const commentUser = isAnonymousComment ? '익명의 아빠' : state.user.nickname;
+      const commentAvatar = isAnonymousComment ? '🧔' : state.user.avatar;
+
       if (replyTo) {
         await postService.addReply(postId, replyTo.commentId, {
-          user: state.user.nickname,
+          user: commentUser,
           userId: state.uid,
-          avatar: state.user.avatar,
+          avatar: commentAvatar,
           text: comment.trim(),
+          isAnonymous: isAnonymousComment,
         });
         setReplyTo(null);
       } else {
         await postService.addComment(postId, {
-          user: state.user.nickname,
+          user: commentUser,
           userId: state.uid,
-          avatar: state.user.avatar,
+          avatar: commentAvatar,
           text: comment.trim(),
+          isAnonymous: isAnonymousComment,
         });
       }
       setComment('');
@@ -578,6 +584,11 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                   <View style={s.commentContent}>
                     <View style={s.commentHeader}>
                       <Text style={s.commentUser}>{item.user}</Text>
+                      {item.isAnonymous && (
+                        <View style={s.anonBadge}>
+                          <Text style={s.anonBadgeText}>익명</Text>
+                        </View>
+                      )}
                       <Text style={s.commentTime}>{item.time}</Text>
                     </View>
                     <Text style={s.commentText}>{item.text}</Text>
@@ -613,6 +624,11 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                     <View style={s.commentContent}>
                       <View style={s.commentHeader}>
                         <Text style={s.commentUser}>{reply.user}</Text>
+                        {reply.isAnonymous && (
+                          <View style={s.anonBadge}>
+                            <Text style={s.anonBadgeText}>익명</Text>
+                          </View>
+                        )}
                         <Text style={s.commentTime}>{reply.time}</Text>
                       </View>
                       <Text style={s.commentText}>{reply.text}</Text>
@@ -647,8 +663,28 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
           </View>
         )}
 
+        {/* Anonymous indicator */}
+        {isAnonymousComment && (
+          <View style={s.anonIndicator}>
+            <Text style={s.anonIndicatorText}>익명으로 작성됩니다</Text>
+            <TouchableOpacity onPress={() => setIsAnonymousComment(false)}>
+              <Icon name="close" size={16} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Comment Input */}
         <View style={s.commentInput}>
+          <TouchableOpacity
+            style={[s.anonToggleBtn, isAnonymousComment && s.anonToggleBtnActive]}
+            onPress={() => setIsAnonymousComment(prev => !prev)}
+            activeOpacity={0.7}>
+            <Icon
+              name={isAnonymousComment ? 'person' : 'person-outline'}
+              size={18}
+              color={isAnonymousComment ? theme.colors.primary : theme.colors.textTertiary}
+            />
+          </TouchableOpacity>
           <TextInput
             ref={inputRef}
             style={s.input}
@@ -963,6 +999,29 @@ const makeStyles = (theme: Theme) =>
       borderTopColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
       gap: theme.spacing.sm,
+    },
+    anonToggleBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    anonToggleBtnActive: {
+      backgroundColor: theme.colors.secondary,
+    },
+    anonIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.secondary,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.sm,
+    },
+    anonIndicatorText: {
+      ...theme.typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     input: {
       flex: 1,

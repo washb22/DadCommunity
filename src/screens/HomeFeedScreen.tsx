@@ -25,7 +25,7 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
   const {state, dispatch} = useApp();
   const theme = useTheme();
   const s = makeStyles(theme);
-  const [activeTab, setActiveTab] = useState('인기');
+  const [activeTab, setActiveTab] = useState('최신');
   const [activeCategory, setActiveCategory] = useState('전체');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
