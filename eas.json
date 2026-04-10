@@ -1,0 +1,20 @@
+{
+  "cli": {
+    "version": ">= 3.0.0"
+  },
+  "build": {
+    "production": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "image": "macos-ventura-13.6-xcode-15.2"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6755950719"
+      }
+    }
+  }
+}

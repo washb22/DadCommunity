@@ -1,4 +1,23 @@
 {
   "name": "DadCommunity",
-  "displayName": "DadCommunity"
+  "displayName": "DadCommunity",
+  "expo": {
+    "name": "DadCommunity",
+    "slug": "dadcommunity",
+    "version": "1.0",
+    "ios": {
+      "bundleIdentifier": "com.dadcommunity.app",
+      "buildNumber": "5",
+      "appleTeamId": "797D83YGHV"
+    },
+    "android": {
+      "package": "com.dadcommunity"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8537591b-7280-4144-969f-f6667b3b04ee"
+      }
+    },
+    "owner": "wkrgud"
+  }
 }
