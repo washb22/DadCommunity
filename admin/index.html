@@ -667,7 +667,7 @@ async function loadDashboard() {
     ]);
     const pendingReports = reportsSnap.docs.filter(d => d.data().status === 'pending');
     const today = new Date(); today.setHours(0,0,0,0);
-    const newToday = usersSnap.docs.filter(d => { const c = d.data().createdAt; if (!c) return false; return (c.toDate ? c.toDate() : new Date(c)) >= today; });
+    const newToday = usersSnap.docs.filter(d => { const c = d.data().createdAt || d.data().termsAgreedAt; if (!c) return false; return (c.toDate ? c.toDate() : new Date(c)) >= today; });
 
     document.getElementById('statUsers').textContent = usersSnap.size;
     document.getElementById('statPosts').textContent = allPostsSnap.size;
@@ -684,7 +684,7 @@ async function loadDashboard() {
       const dayStart = getDaysAgo(i);
       const dayEnd = getDaysAgo(i - 1);
       labels14.push(dateLabel(dayStart));
-      signupData.push(usersSnap.docs.filter(d => { const c = d.data().createdAt; if (!c) return false; const dt = c.toDate ? c.toDate() : new Date(c); return dt >= dayStart && dt < dayEnd; }).length);
+      signupData.push(usersSnap.docs.filter(d => { const c = d.data().createdAt || d.data().termsAgreedAt; if (!c) return false; const dt = c.toDate ? c.toDate() : new Date(c); return dt >= dayStart && dt < dayEnd; }).length);
       postData.push(allPostsSnap.docs.filter(d => { const c = d.data().timestamp || d.data().createdAt; if (!c) return false; const dt = c.toDate ? c.toDate() : new Date(c); return dt >= dayStart && dt < dayEnd; }).length);
     }
 
@@ -803,7 +803,7 @@ async function loadUsers() {
 function renderUsers(users) {
   if (!users.length) { document.getElementById('usersTable').innerHTML = '<tr><td colspan="6" class="empty">사용자가 없습니다</td></tr>'; return; }
   document.getElementById('usersTable').innerHTML = users.map(u => `<tr>
-    <td>${esc(u.avatar)||''} ${esc(u.nickname)||'(없음)'}</td><td>${esc(u.email)||'-'}</td><td>${formatDateShort(u.createdAt)}</td><td>${u.postCount||0}</td>
+    <td>${esc(u.avatar)||''} ${esc(u.nickname)||'(없음)'}</td><td>${esc(u.email)||'-'}</td><td>${formatDateShort(u.createdAt||u.termsAgreedAt)}</td><td>${u.postCount||0}</td>
     <td><span class="badge-status ${u.banned?'badge-banned':'badge-active'}">${u.banned?'정지':'활성'}</span></td>
     <td class="actions"><button class="btn btn-sm btn-primary" data-uid="${esc(u.id)}" onclick="viewUser(this.dataset.uid)">상세</button>
     ${u.banned?`<button class="btn btn-sm btn-success" data-uid="${esc(u.id)}" onclick="toggleBan(this.dataset.uid,false)">해제</button>`:`<button class="btn btn-sm btn-danger" data-uid="${esc(u.id)}" onclick="toggleBan(this.dataset.uid,true)">정지</button>`}</td></tr>`).join('');
@@ -822,7 +822,7 @@ async function viewUser(uid) {
     <div class="modal-field"><label>이메일</label><input value="${esc(u.email)}" readonly></div>
     <div class="modal-field"><label>자기소개</label><textarea readonly>${esc(u.bio)}</textarea></div>
     <div class="modal-field"><label>게시글 수</label><input value="${u.postCount||0}" readonly></div>
-    <div class="modal-field"><label>가입일</label><input value="${formatDate(u.createdAt)}" readonly></div>
+    <div class="modal-field"><label>가입일</label><input value="${formatDate(u.createdAt||u.termsAgreedAt)}" readonly></div>
     <div class="modal-actions">
       <button class="btn btn-danger" onclick="toggleBan('${esc(uid)}',${!u.banned}); closeModal();">${u.banned?'정지 해제':'사용자 정지'}</button>
       <button class="btn" onclick="closeModal()">닫기</button></div>`);
