@@ -680,10 +680,13 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
             onPress={() => setIsAnonymousComment(prev => !prev)}
             activeOpacity={0.7}>
             <Icon
-              name={isAnonymousComment ? 'person' : 'person-outline'}
-              size={18}
+              name={isAnonymousComment ? 'eye-off' : 'eye-off-outline'}
+              size={14}
               color={isAnonymousComment ? theme.colors.primary : theme.colors.textTertiary}
             />
+            <Text style={[s.anonToggleText, isAnonymousComment && s.anonToggleTextActive]}>
+              익명
+            </Text>
           </TouchableOpacity>
           <TextInput
             ref={inputRef}
@@ -1001,14 +1004,26 @@ const makeStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     anonToggleBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: 3,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     anonToggleBtnActive: {
       backgroundColor: theme.colors.secondary,
+      borderColor: theme.colors.primary,
+    },
+    anonToggleText: {
+      ...theme.typography.overline,
+      color: theme.colors.textTertiary,
+      fontWeight: '600',
+    },
+    anonToggleTextActive: {
+      color: theme.colors.primary,
     },
     anonIndicator: {
       flexDirection: 'row',
