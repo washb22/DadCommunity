@@ -46,11 +46,18 @@ const INTERESTS = [
   '독서',
 ];
 
-interface ChildInfo {
+interface ChildEntry {
   ageGroup: string;
   gender: string;
-  count: number;
 }
+
+interface ChildInfo {
+  count: number;
+  children: ChildEntry[];
+}
+
+const makeEmptyChildren = (count: number): ChildEntry[] =>
+  Array.from({length: count}, () => ({ageGroup: '', gender: ''}));
 
 export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
   const {state, dispatch} = useApp();
@@ -63,10 +70,26 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
   const [nickname, setNickname] = useState(state.user.nickname || '');
   const [avatar, setAvatar] = useState(state.user.avatar || '🧔');
   const [childInfo, setChildInfo] = useState<ChildInfo>({
-    ageGroup: '',
-    gender: '',
     count: 1,
+    children: makeEmptyChildren(1),
   });
+
+  const updateChildCount = (c: number) => {
+    setChildInfo(prev => {
+      const next = prev.children.slice(0, c);
+      while (next.length < c) next.push({ageGroup: '', gender: ''});
+      return {count: c, children: next};
+    });
+  };
+
+  const updateChildAt = (index: number, patch: Partial<ChildEntry>) => {
+    setChildInfo(prev => ({
+      ...prev,
+      children: prev.children.map((ch, i) =>
+        i === index ? {...ch, ...patch} : ch,
+      ),
+    }));
+  };
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -92,12 +115,20 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
       }
       setStep(3);
     } else if (step === 3) {
-      if (!childInfo.ageGroup) {
-        Alert.alert('알림', '자녀 나이대를 선택해주세요.');
+      const missingAge = childInfo.children.findIndex(c => !c.ageGroup);
+      if (missingAge !== -1) {
+        Alert.alert(
+          '알림',
+          `${missingAge + 1}번째 자녀의 나이대를 선택해주세요.`,
+        );
         return;
       }
-      if (!childInfo.gender) {
-        Alert.alert('알림', '자녀 성별을 선택해주세요.');
+      const missingGender = childInfo.children.findIndex(c => !c.gender);
+      if (missingGender !== -1) {
+        Alert.alert(
+          '알림',
+          `${missingGender + 1}번째 자녀의 성별을 선택해주세요.`,
+        );
         return;
       }
       setStep(4);
@@ -122,14 +153,17 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
 
     setSubmitting(true);
     try {
+      // Primary child = first child — keeps backward compat for existing filters/badges
+      const primary = childInfo.children[0] || {ageGroup: '', gender: ''};
       await firestore().collection('users').doc(state.uid).set(
         {
           nickname: nickname.trim(),
           avatar,
           childInfo: {
-            ageGroup: childInfo.ageGroup,
-            gender: childInfo.gender,
+            ageGroup: primary.ageGroup,
+            gender: primary.gender,
             count: childInfo.count,
+            children: childInfo.children,
           },
           interests: selectedInterests,
           onboardingCompleted: true,
@@ -145,8 +179,8 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
         updates: {
           nickname: nickname.trim(),
           avatar,
-          childAgeGroup: childInfo.ageGroup,
-          childGender: childInfo.gender,
+          childAgeGroup: primary.ageGroup,
+          childGender: primary.gender,
           childCount: childInfo.count,
           interests: selectedInterests,
         },
@@ -293,55 +327,7 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
       <Text style={s.stepTitle}>자녀 정보</Text>
       <Text style={s.stepSubtitle}>맞춤형 콘텐츠를 추천해드리기 위해 알려주세요</Text>
 
-      {/* Age Group */}
-      <View style={s.field}>
-        <Text style={s.fieldLabel}>자녀 나이대</Text>
-        <View style={s.chipGrid}>
-          {AGE_GROUPS.map(ag => (
-            <TouchableOpacity
-              key={ag.value}
-              style={[
-                s.chip,
-                childInfo.ageGroup === ag.value && s.chipActive,
-              ]}
-              onPress={() => setChildInfo(prev => ({...prev, ageGroup: ag.value}))}>
-              <Text
-                style={[
-                  s.chipText,
-                  childInfo.ageGroup === ag.value && s.chipTextActive,
-                ]}>
-                {ag.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Gender */}
-      <View style={s.field}>
-        <Text style={s.fieldLabel}>성별</Text>
-        <View style={s.chipGrid}>
-          {GENDER_OPTIONS.map(g => (
-            <TouchableOpacity
-              key={g.value}
-              style={[
-                s.chip,
-                childInfo.gender === g.value && s.chipActive,
-              ]}
-              onPress={() => setChildInfo(prev => ({...prev, gender: g.value}))}>
-              <Text
-                style={[
-                  s.chipText,
-                  childInfo.gender === g.value && s.chipTextActive,
-                ]}>
-                {g.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Count */}
+      {/* Count — select first so per-child blocks render accordingly */}
       <View style={s.field}>
         <Text style={s.fieldLabel}>자녀 수</Text>
         <View style={s.chipGrid}>
@@ -353,7 +339,7 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
                 s.chipSmall,
                 childInfo.count === c && s.chipActive,
               ]}
-              onPress={() => setChildInfo(prev => ({...prev, count: c}))}>
+              onPress={() => updateChildCount(c)}>
               <Text
                 style={[
                   s.chipText,
@@ -365,6 +351,61 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
           ))}
         </View>
       </View>
+
+      {/* Per-child age group + gender */}
+      {childInfo.children.map((child, idx) => (
+        <View key={idx} style={s.childBlock}>
+          <Text style={s.childBlockTitle}>
+            {childInfo.count > 1 ? `${idx + 1}번째 자녀` : '자녀 정보'}
+          </Text>
+
+          <View style={s.field}>
+            <Text style={s.fieldLabel}>나이대</Text>
+            <View style={s.chipGrid}>
+              {AGE_GROUPS.map(ag => (
+                <TouchableOpacity
+                  key={ag.value}
+                  style={[
+                    s.chip,
+                    child.ageGroup === ag.value && s.chipActive,
+                  ]}
+                  onPress={() => updateChildAt(idx, {ageGroup: ag.value})}>
+                  <Text
+                    style={[
+                      s.chipText,
+                      child.ageGroup === ag.value && s.chipTextActive,
+                    ]}>
+                    {ag.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={s.field}>
+            <Text style={s.fieldLabel}>성별</Text>
+            <View style={s.chipGrid}>
+              {GENDER_OPTIONS.map(g => (
+                <TouchableOpacity
+                  key={g.value}
+                  style={[
+                    s.chip,
+                    child.gender === g.value && s.chipActive,
+                  ]}
+                  onPress={() => updateChildAt(idx, {gender: g.value})}>
+                  <Text
+                    style={[
+                      s.chipText,
+                      child.gender === g.value && s.chipTextActive,
+                    ]}>
+                    {g.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      ))}
     </ScrollView>
   );
 
@@ -558,6 +599,18 @@ const makeStyles = (theme: Theme) =>
     },
     field: {
       marginBottom: theme.spacing.xl,
+    },
+    childBlock: {
+      backgroundColor: theme.colors.background,
+      borderRadius: theme.radius.md,
+      padding: theme.spacing.base,
+      marginBottom: theme.spacing.lg,
+    },
+    childBlockTitle: {
+      ...theme.typography.body,
+      fontWeight: '700',
+      color: theme.colors.textPrimary,
+      marginBottom: theme.spacing.md,
     },
     fieldLabel: {
       ...theme.typography.caption,

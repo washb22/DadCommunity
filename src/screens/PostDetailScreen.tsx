@@ -284,6 +284,44 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
 
   const isMyPost = post.user === state.user.nickname || post.userId === state.uid;
 
+  const handleDeleteComment = (commentId: string) => {
+    Alert.alert('댓글 삭제', '이 댓글을 삭제하시겠습니까?\n답글도 함께 삭제됩니다.', [
+      {text: '취소', style: 'cancel'},
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await postService.deleteComment(postId, commentId);
+            await fetchComments();
+          } catch (error) {
+            console.error('Failed to delete comment:', error);
+            Alert.alert('오류', '댓글 삭제에 실패했습니다.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteReply = (commentId: string, replyId: string) => {
+    Alert.alert('답글 삭제', '이 답글을 삭제하시겠습니까?', [
+      {text: '취소', style: 'cancel'},
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await postService.deleteReply(postId, commentId, replyId);
+            await fetchComments();
+          } catch (error) {
+            console.error('Failed to delete reply:', error);
+            Alert.alert('오류', '답글 삭제에 실패했습니다.');
+          }
+        },
+      },
+    ]);
+  };
+
   const handleEdit = () => {
     navigation.navigate('WritePost', {
       editMode: true,
@@ -615,6 +653,15 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                         <Icon name="arrow-undo-outline" size={13} color={theme.colors.primary} />
                         <Text style={s.replyBtnText}> 답글 달기</Text>
                       </TouchableOpacity>
+                      {item.userId && item.userId === state.uid && (
+                        <TouchableOpacity
+                          style={s.replyBtn}
+                          onPress={() => handleDeleteComment(item.id)}
+                          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                          <Icon name="trash-outline" size={13} color={theme.colors.error} />
+                          <Text style={[s.replyBtnText, {color: theme.colors.error}]}> 삭제</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -645,6 +692,15 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                           <Icon name="arrow-undo-outline" size={13} color={theme.colors.primary} />
                           <Text style={s.replyBtnText}> 답글 달기</Text>
                         </TouchableOpacity>
+                        {reply.userId && reply.userId === state.uid && (
+                          <TouchableOpacity
+                            style={s.replyBtn}
+                            onPress={() => handleDeleteReply(item.id, reply.id)}
+                            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                            <Icon name="trash-outline" size={13} color={theme.colors.error} />
+                            <Text style={[s.replyBtnText, {color: theme.colors.error}]}> 삭제</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
                   </View>

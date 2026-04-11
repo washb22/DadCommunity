@@ -111,7 +111,10 @@ export interface UserProfile {
   likeCount: number;
   saveCount: number;
   childAgeGroup?: string;
+  childGender?: string;
+  childCount?: number;
   interests?: string[];
+  lastSeenVersion?: string;
 }
 
 export const INITIAL_USER: UserProfile = {

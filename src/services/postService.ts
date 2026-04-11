@@ -4,6 +4,20 @@ import {Post, Comment, Reply, getRelativeTime} from '../data/mockData';
 const postsRef = firestore().collection('posts');
 const notificationsRef = firestore().collection('notifications');
 
+// ─── popular 피드 클라이언트 메모리 캐시 (5분 TTL) ───
+// fetchPosts('popular')은 호출마다 limit(100) 풀 스캔이므로 캐시 없이는
+// Firestore Spark 무료 한도(50k reads/day)를 쉽게 넘김. 카테고리별 키 분리.
+const POPULAR_CACHE_TTL_MS = 5 * 60 * 1000;
+const popularCache = new Map<string, {ts: number; posts: Post[]}>();
+
+export function invalidatePopularCache(category?: string) {
+  if (category === undefined) {
+    popularCache.clear();
+  } else {
+    popularCache.delete(category || '전체');
+  }
+}
+
 /**
  * 알림 문서 생성 (notifications 컬렉션)
  * - 자기 자신에게는 알림을 보내지 않음
@@ -76,6 +90,17 @@ export async function fetchPosts(
   }
 
   if (sortBy === 'popular') {
+    // 5분 메모리 캐시 확인 (첫 페이지만 — popular는 페이지네이션 없음)
+    const cacheKey = category || '전체';
+    const cached = popularCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < POPULAR_CACHE_TTL_MS) {
+      return {
+        posts: cached.posts.slice(0, limit),
+        lastDoc: null,
+        hasMore: false,
+      };
+    }
+
     // 인기글: 최근 글을 충분히 가져온 뒤 점수 기반 정렬
     query = query.orderBy('timestamp', 'desc').limit(100);
     const snapshot = await query.get();
@@ -96,8 +121,13 @@ export async function fetchPosts(
     });
     scored.sort((a, b) => b._score - a._score);
     const sliced = scored.slice(0, limit);
+    const posts = sliced.map(({_score, _doc, ...rest}) => rest) as Post[];
+
+    // 캐시에 저장 (다음 5분간 재호출 시 Firestore 접근 없음)
+    popularCache.set(cacheKey, {ts: Date.now(), posts});
+
     return {
-      posts: sliced.map(({_score, _doc, ...rest}) => rest) as Post[],
+      posts,
       lastDoc: null,
       hasMore: false,
     };
@@ -172,6 +202,8 @@ export async function createPost(post: {
   });
 
   const docRef = await postsRef.add(newPost);
+  // 새 글이 올라오면 popular 캐시 무효화 (전체 카테고리)
+  invalidatePopularCache();
   return docRef.id;
 }
 
@@ -183,10 +215,12 @@ export async function updatePost(
     ...updates,
     updatedAt: firestore.FieldValue.serverTimestamp(),
   });
+  invalidatePopularCache();
 }
 
 export async function deletePost(postId: string) {
   await postsRef.doc(postId).delete();
+  invalidatePopularCache();
 }
 
 export async function toggleLike(
@@ -407,6 +441,37 @@ export async function addComment(
   }
 
   return commentRef.id;
+}
+
+export async function deleteComment(postId: string, commentId: string) {
+  const commentRef = commentsRef(postId).doc(commentId);
+
+  // Delete replies subcollection first and count them for commentCount adjustment
+  const repliesSnap = await commentRef.collection('replies').get();
+  const replyCount = repliesSnap.size;
+
+  const batch = firestore().batch();
+  repliesSnap.docs.forEach(r => batch.delete(r.ref));
+  batch.delete(commentRef);
+  batch.update(postsRef.doc(postId), {
+    commentCount: firestore.FieldValue.increment(-(1 + replyCount)),
+  });
+  await batch.commit();
+}
+
+export async function deleteReply(
+  postId: string,
+  commentId: string,
+  replyId: string,
+) {
+  const batch = firestore().batch();
+  batch.delete(
+    commentsRef(postId).doc(commentId).collection('replies').doc(replyId),
+  );
+  batch.update(postsRef.doc(postId), {
+    commentCount: firestore.FieldValue.increment(-1),
+  });
+  await batch.commit();
 }
 
 export async function addReply(

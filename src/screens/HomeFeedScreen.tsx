@@ -127,6 +127,10 @@ export default function HomeFeedScreen({navigation}: HomeFeedScreenProps) {
     try {
       const sortBy = activeTab === '인기' ? 'popular' : 'latest';
       const category = activeCategory !== '전체' ? activeCategory : undefined;
+      // Pull-to-refresh 시 popular 캐시 무효화 — 캐시가 유효해도 강제 새로고침
+      if (sortBy === 'popular') {
+        postService.invalidatePopularCache(category);
+      }
       const result = await postService.fetchPosts(
         category,
         sortBy as 'latest' | 'popular',

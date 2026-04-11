@@ -10,6 +10,7 @@ import {ThemeProvider, useTheme} from './src/theme';
 import {AppProvider} from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import {setupNotifications} from './src/services/notificationService';
+import VersionGate from './src/components/VersionGate';
 
 function ThemedStatusBar() {
   const theme = useTheme();
@@ -35,6 +36,7 @@ export default function App() {
           <AppProvider>
             <ThemedStatusBar />
             <AppNavigator />
+            <VersionGate />
           </AppProvider>
         </ThemeProvider>
       </SafeAreaProvider>

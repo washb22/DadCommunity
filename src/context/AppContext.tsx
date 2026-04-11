@@ -6,6 +6,7 @@ import React, {
   ReactNode,
 } from 'react';
 import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 import {
   Post,
   Comment,
@@ -291,6 +292,16 @@ export function AppProvider({children}: {children: ReactNode}) {
               user: profile,
               uid: firebaseUser.uid,
             });
+            // Stamp lastActive so admin dashboard DAU/MAU fallback works
+            // (admin/index.html reads users.lastActive when activityLogs is empty).
+            firestore()
+              .collection('users')
+              .doc(firebaseUser.uid)
+              .set(
+                {lastActive: firestore.FieldValue.serverTimestamp()},
+                {merge: true},
+              )
+              .catch(() => {});
             // Load blocked users list
             getBlockedUsers(firebaseUser.uid)
               .then(blockedUsers => dispatch({type: 'SET_BLOCKED_USERS', blockedUsers}))

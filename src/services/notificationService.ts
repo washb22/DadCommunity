@@ -1,9 +1,26 @@
 import messaging from '@react-native-firebase/messaging';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import {Alert, Platform} from 'react-native';
+import {Alert, PermissionsAndroid, Platform} from 'react-native';
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  // Android 13+ (API 33+) 는 POST_NOTIFICATIONS 런타임 권한이 필요하다.
+  // messaging().requestPermission() 만으로는 네이티브 권한 모달이
+  // 안 뜰 수 있으므로 PermissionsAndroid 로 명시 요청.
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    try {
+      const result = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      );
+      if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+        return false;
+      }
+    } catch (e) {
+      console.warn('POST_NOTIFICATIONS request failed:', e);
+      // 권한 요청 자체가 실패한 경우에도 FCM 권한 체크는 계속 시도
+    }
+  }
+
   const authStatus = await messaging().requestPermission();
   const enabled =
     authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -54,6 +71,15 @@ export async function setupNotifications() {
           {merge: true},
         );
       }
+    }
+
+    // Subscribe to 'all' topic so this device can receive broadcast pushes.
+    // functions/index.js sends pushes to topic:"all"; without this call the
+    // device stays unsubscribed and pushes never arrive.
+    try {
+      await messaging().subscribeToTopic('all');
+    } catch (e) {
+      console.warn('subscribeToTopic failed:', e);
     }
 
     // Handle foreground messages
