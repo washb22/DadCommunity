@@ -171,6 +171,7 @@ function appReducer(state: AppState, action: Action): AppState {
           return {
             ...p,
             comments: [...p.comments, action.comment],
+            commentCount: (p.commentCount || p.comments.length) + 1,
           };
         }
         return p;
@@ -192,6 +193,7 @@ function appReducer(state: AppState, action: Action): AppState {
               }
               return c;
             }),
+            commentCount: (p.commentCount || p.comments.length) + 1,
           };
         }
         return p;

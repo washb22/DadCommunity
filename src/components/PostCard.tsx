@@ -104,7 +104,7 @@ function PostCard({post, onPress, onLike, onSave}: PostCardProps) {
         <View style={s.actionBtn}>
           <Icon name="chatbubble-outline" size={18} color={theme.colors.textTertiary} />
           <Text style={s.actionText}>
-            {' '}{post.comments.length}
+            {' '}{Math.max(post.commentCount || 0, post.comments?.length || 0)}
           </Text>
         </View>
         <View style={s.actionBtn}>

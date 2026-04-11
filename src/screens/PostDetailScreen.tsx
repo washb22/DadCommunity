@@ -607,10 +607,13 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
+                        style={s.replyBtn}
                         onPress={() =>
                           setReplyTo({commentId: item.id, userName: item.user})
-                        }>
-                        <Text style={s.commentAction}>답글</Text>
+                        }
+                        hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                        <Icon name="arrow-undo-outline" size={13} color={theme.colors.primary} />
+                        <Text style={s.replyBtnText}> 답글 달기</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -632,6 +635,17 @@ export default function PostDetailScreen({route, navigation}: PostDetailScreenPr
                         <Text style={s.commentTime}>{reply.time}</Text>
                       </View>
                       <Text style={s.commentText}>{reply.text}</Text>
+                      <View style={s.commentActions}>
+                        <TouchableOpacity
+                          style={s.replyBtn}
+                          onPress={() =>
+                            setReplyTo({commentId: item.id, userName: reply.user})
+                          }
+                          hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+                          <Icon name="arrow-undo-outline" size={13} color={theme.colors.primary} />
+                          <Text style={s.replyBtnText}> 답글 달기</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -945,6 +959,19 @@ const makeStyles = (theme: Theme) =>
     },
     commentActionActive: {
       color: theme.colors.error,
+    },
+    replyBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.primary + '15',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    replyBtnText: {
+      fontSize: 12,
+      color: theme.colors.primary,
+      fontWeight: '600',
     },
     replyItem: {
       flexDirection: 'row',

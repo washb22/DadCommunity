@@ -118,7 +118,7 @@ export default function LoginScreen({navigation}: LoginScreenProps) {
           style={s.appleBtn}
           onPress={handleAppleLogin}
           activeOpacity={0.8}>
-          <Text style={s.appleLogo}>{'\uF8FF'}</Text>
+          <Icon name="logo-apple" size={22} color="#FFFFFF" />
           <Text style={s.appleBtnText}>Apple로 시작하기</Text>
         </TouchableOpacity>
 
