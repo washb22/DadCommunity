@@ -270,6 +270,23 @@ export default function ProfileScreen({navigation}: ProfileScreenProps) {
         </TouchableOpacity>
 
         <Text style={s.version}>버전 1.0.0</Text>
+
+        {/* 사업자 정보 */}
+        <View style={s.businessInfo}>
+          <Text style={s.businessName}>워시비 주식회사</Text>
+          <Text style={s.businessDetail}>
+            대표 : 임진혁{'  |  '}사업자등록번호 : 172-88-02728
+          </Text>
+          <Text style={s.businessDetail}>
+            고객센터 : 031-427-3898
+          </Text>
+          <Text style={s.businessDetail}>
+            E-Mail : sbro@sbrother.co.kr
+          </Text>
+          <Text style={s.businessAddress}>
+            경기도 용인시 수지구 포은대로59번길 37 702호
+          </Text>
+        </View>
       </ScrollView>
 
       {/* 회원 탈퇴 확인 모달 */}
@@ -489,6 +506,31 @@ const makeStyles = (theme: Theme) =>
       ...theme.typography.captionSmall,
       color: theme.colors.textTertiary,
       paddingVertical: theme.spacing.lg,
+    },
+    businessInfo: {
+      marginHorizontal: theme.spacing.lg,
+      marginBottom: theme.spacing['2xl'],
+      paddingVertical: theme.spacing.base,
+      paddingHorizontal: theme.spacing.base,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border,
+    },
+    businessName: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+      fontWeight: '600',
+      marginBottom: theme.spacing.sm,
+    },
+    businessDetail: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+      lineHeight: 18,
+    },
+    businessAddress: {
+      ...theme.typography.captionSmall,
+      color: theme.colors.textTertiary,
+      lineHeight: 18,
+      marginTop: theme.spacing.sm,
     },
     modalOverlay: {
       flex: 1,
