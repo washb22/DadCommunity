@@ -167,7 +167,6 @@ export default function OnboardingScreen({navigation}: OnboardingScreenProps) {
           },
           interests: selectedInterests,
           onboardingCompleted: true,
-          createdAt: firestore.FieldValue.serverTimestamp(),
           termsAgreedAt: firestore.FieldValue.serverTimestamp(),
           privacyAgreedAt: firestore.FieldValue.serverTimestamp(),
         },
